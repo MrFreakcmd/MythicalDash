@@ -112,6 +112,18 @@ class App extends MythicalAPP
 			if (isset($_ENV['firewall_enabled']) && $_ENV['firewall_enabled'] == 'true') {
 				try {
 					$redis = new \Redis();
+					$redisHost = $_ENV['REDIS_HOST'] ?? 'localhost';
+					$redisPort = $_ENV['REDIS_PORT'] ?? 6379;
+					$redisPassword = $_ENV['REDIS_PASSWORD'] ?? null;
+
+					// Connect to Redis
+					$redis->connect($redisHost, $redisPort);
+
+					// Authenticate if password is set
+					if ($redisPassword) {
+						$redis->auth($redisPassword);
+					}
+
 					if (isset($_ENV['firewall_rate_limit'])) {
 						$rateLimiter = new RedisRateLimiter(Rate::perMinute($_ENV['firewall_rate_limit']), $redis, 'rate_limiting');
 						try {
@@ -137,6 +149,7 @@ class App extends MythicalAPP
 					}
 				} catch (\Exception $e) {
 					self::getLogger()->error('Redis server is not available - rate limiting disabled');
+					self::getLogger()->error('Error: ' . $e->getMessage());
 					$rateLimiter = null;
 				}
 			}

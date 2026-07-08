@@ -64,12 +64,15 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "php", "cli", "help"]
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
       timeout: 20s
       retries: 10
+      start_period: 30s
+      interval: 10s
     volumes:
+      - ./backend/app:/var/www/html/app
       - mythicaldash_v3_attachments:/var/www/html/public/attachments
-      - ./.env:/var/www/html/storage/.env
+      - ./.env:/var/www/html/storage/.env:ro
       - mythicaldash_v3_snapshots:/var/www/html/storage/backups
     networks:
       - mythicaldash_v3_network
