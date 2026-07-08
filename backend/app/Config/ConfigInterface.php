@@ -73,6 +73,18 @@ interface ConfigInterface
     public const PTERODACTYL_BASE_URL = 'pterodactyl_base_url';
 
     /**
+     * Calagopus.
+     */
+    public const CALAGOPUS_API_KEY = 'calagopus_api_key';
+    public const CALAGOPUS_BASE_URL = 'calagopus_base_url';
+    public const CALAGOPUS_ENABLED = 'calagopus_enabled';
+
+    /**
+     * Panel Type (pterodactyl | calagopus).
+     */
+    public const ACTIVE_PANEL_TYPE = 'active_panel_type';
+
+    /**
      * License.
      */
     public const LICENSE_KEY = 'license_key';

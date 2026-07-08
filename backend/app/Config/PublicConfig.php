@@ -81,6 +81,13 @@ class PublicConfig extends ConfigFactory
             // Pterodactyl settings
             ConfigInterface::PTERODACTYL_BASE_URL => 'https://demopanel.mythical.systems',
 
+            // Calagopus settings
+            ConfigInterface::CALAGOPUS_ENABLED => 'false',
+            ConfigInterface::CALAGOPUS_BASE_URL => '',
+
+            // Active panel type (pterodactyl | calagopus)
+            ConfigInterface::ACTIVE_PANEL_TYPE => 'pterodactyl',
+
             // AFK Settings
             ConfigInterface::AFK_ENABLED => 'true',
             ConfigInterface::AFK_MIN_PER_COIN => '1',
