@@ -44,7 +44,8 @@ services:
       retries: 10
 
   backend:
-    image: ghcr.io/mythicalltd/mythicaldash_v3-backend:dev
+    image: ghcr.io/mrfreakcmd/mythicaldash_v3-backend:dev
+    pull_policy: always
     container_name: mythicaldash_v3_backend
     restart: unless-stopped
     environment:
@@ -74,7 +75,8 @@ services:
       - mythicaldash_v3_network
 
   frontend:
-    image: ghcr.io/mythicalltd/mythicaldash_v3-frontend:dev
+    image: ghcr.io/mrfreakcmd/mythicaldash_v3-frontend:dev
+    pull_policy: always
     container_name: mythicaldash_v3_frontend
     restart: unless-stopped
     volumes: []

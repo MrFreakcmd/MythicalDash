@@ -81,13 +81,13 @@ jobs:
           platforms: ${{ matrix.platform }}
           push: true
           cache-from: |
-            type=registry,ref=ghcr.io/mythicalltd/mythicaldash_v3-backend:buildcache-${{ matrix.cache-key }}
+            type=registry,ref=ghcr.io/mrfreakcmd/mythicaldash_v3-backend:buildcache-${{ matrix.cache-key }}
             type=gha
           cache-to: |
-            type=registry,ref=ghcr.io/mythicalltd/mythicaldash_v3-backend:buildcache-${{ matrix.cache-key }},mode=max
+            type=registry,ref=ghcr.io/mrfreakcmd/mythicaldash_v3-backend:buildcache-${{ matrix.cache-key }},mode=max
             type=gha,mode=max
           tags: |
-            ghcr.io/mythicalltd/mythicaldash_v3-backend:dev-${{ steps.tags.outputs.branch }}-${{ steps.tags.outputs.sha }}-${{ steps.platform-tag.outputs.tag }}
+            ghcr.io/mrfreakcmd/mythicaldash_v3-backend:dev-${{ steps.tags.outputs.branch }}-${{ steps.tags.outputs.sha }}-${{ steps.platform-tag.outputs.tag }}
 
   manifest-backend:
     name: Create Multi-Arch Manifest - Backend
@@ -133,15 +133,15 @@ jobs:
 
       - name: Create and push manifest
         run: |
-          docker buildx imagetools create --tag ghcr.io/mythicalltd/mythicaldash_v3-backend:dev \
-            ghcr.io/mythicalltd/mythicaldash_v3-backend:dev-${{ steps.tags.outputs.branch }}-${{ steps.tags.outputs.sha }}-linux-amd64 \
-            ghcr.io/mythicalltd/mythicaldash_v3-backend:dev-${{ steps.tags.outputs.branch }}-${{ steps.tags.outputs.sha }}-linux-arm64
-          docker buildx imagetools create --tag ghcr.io/mythicalltd/mythicaldash_v3-backend:dev-${{ steps.tags.outputs.branch }} \
-            ghcr.io/mythicalltd/mythicaldash_v3-backend:dev-${{ steps.tags.outputs.branch }}-${{ steps.tags.outputs.sha }}-linux-amd64 \
-            ghcr.io/mythicalltd/mythicaldash_v3-backend:dev-${{ steps.tags.outputs.branch }}-${{ steps.tags.outputs.sha }}-linux-arm64
-          docker buildx imagetools create --tag ghcr.io/mythicalltd/mythicaldash_v3-backend:dev-${{ steps.tags.outputs.branch }}-${{ steps.tags.outputs.sha }} \
-            ghcr.io/mythicalltd/mythicaldash_v3-backend:dev-${{ steps.tags.outputs.branch }}-${{ steps.tags.outputs.sha }}-linux-amd64 \
-            ghcr.io/mythicalltd/mythicaldash_v3-backend:dev-${{ steps.tags.outputs.branch }}-${{ steps.tags.outputs.sha }}-linux-arm64
+          docker buildx imagetools create --tag ghcr.io/mrfreakcmd/mythicaldash_v3-backend:dev \
+            ghcr.io/mrfreakcmd/mythicaldash_v3-backend:dev-${{ steps.tags.outputs.branch }}-${{ steps.tags.outputs.sha }}-linux-amd64 \
+            ghcr.io/mrfreakcmd/mythicaldash_v3-backend:dev-${{ steps.tags.outputs.branch }}-${{ steps.tags.outputs.sha }}-linux-arm64
+          docker buildx imagetools create --tag ghcr.io/mrfreakcmd/mythicaldash_v3-backend:dev-${{ steps.tags.outputs.branch }} \
+            ghcr.io/mrfreakcmd/mythicaldash_v3-backend:dev-${{ steps.tags.outputs.branch }}-${{ steps.tags.outputs.sha }}-linux-amd64 \
+            ghcr.io/mrfreakcmd/mythicaldash_v3-backend:dev-${{ steps.tags.outputs.branch }}-${{ steps.tags.outputs.sha }}-linux-arm64
+          docker buildx imagetools create --tag ghcr.io/mrfreakcmd/mythicaldash_v3-backend:dev-${{ steps.tags.outputs.branch }}-${{ steps.tags.outputs.sha }} \
+            ghcr.io/mrfreakcmd/mythicaldash_v3-backend:dev-${{ steps.tags.outputs.branch }}-${{ steps.tags.outputs.sha }}-linux-amd64 \
+            ghcr.io/mrfreakcmd/mythicaldash_v3-backend:dev-${{ steps.tags.outputs.branch }}-${{ steps.tags.outputs.sha }}-linux-arm64
 
   build-frontend:
     name: Build & Push Frontend (Dev) - ${{ matrix.platform }}
@@ -203,12 +203,12 @@ jobs:
           platforms: ${{ matrix.platform }}
           push: true
           cache-from: |
-            type=registry,ref=ghcr.io/mythicalltd/mythicaldash_v3-frontend:buildcache-${{ matrix.cache-key }}
+            type=registry,ref=ghcr.io/mrfreakcmd/mythicaldash_v3-frontend:buildcache-${{ matrix.cache-key }}
             type=gha
           cache-to: |
-            type=registry,ref=ghcr.io/mythicalltd/mythicaldash_v3-frontend:buildcache-${{ matrix.cache-key }},mode=max
+            type=registry,ref=ghcr.io/mrfreakcmd/mythicaldash_v3-frontend:buildcache-${{ matrix.cache-key }},mode=max
             type=gha,mode=max
           tags: |
-            ghcr.io/mythicalltd/mythicaldash_v3-frontend:dev
-            ghcr.io/mythicalltd/mythicaldash_v3-frontend:dev-${{ steps.tags.outputs.branch }}
-            ghcr.io/mythicalltd/mythicaldash_v3-frontend:dev-${{ steps.tags.outputs.branch }}-${{ steps.tags.outputs.sha }}
+            ghcr.io/mrfreakcmd/mythicaldash_v3-frontend:dev
+            ghcr.io/mrfreakcmd/mythicaldash_v3-frontend:dev-${{ steps.tags.outputs.branch }}
+            ghcr.io/mrfreakcmd/mythicaldash_v3-frontend:dev-${{ steps.tags.outputs.branch }}-${{ steps.tags.outputs.sha }}
