@@ -43,26 +43,26 @@ use MythicalDash\Services\Calagopus\Admin\CalagopusAdmin;
  */
 class PanelManager
 {
-    private static ?string $activePanelType = null;
-
     /**
-     * Get the active panel type.
+     * Get the active panel type (always fresh from database, no caching).
+     * This must always return the current value because panel type can change
+     * at runtime and registration/API operations depend on accuracy.
      *
      * @return string Either 'pterodactyl' or 'calagopus'
      */
     public static function getActivePanelType(): string
     {
-        if (self::$activePanelType === null) {
-            try {
-                $config = App::getInstance(false)->getConfig();
-                self::$activePanelType = $config->getDBSetting(ConfigInterface::ACTIVE_PANEL_TYPE, 'pterodactyl');
-            } catch (\Exception $e) {
-                App::getInstance(false)->getLogger()->error('Failed to detect active panel type: ' . $e->getMessage());
-                self::$activePanelType = 'pterodactyl'; // Default fallback
+        try {
+            $config = App::getInstance(false)->getConfig();
+            $panelType = $config->getDBSetting(ConfigInterface::ACTIVE_PANEL_TYPE, 'pterodactyl');
+            if (!empty($panelType)) {
+                return $panelType;
             }
+        } catch (\Exception $e) {
+            App::getInstance(false)->getLogger()->error('Failed to detect active panel type: ' . $e->getMessage());
         }
-
-        return self::$activePanelType;
+        // Final fallback only if DB read fails
+        return 'pterodactyl';
     }
 
     /**
@@ -176,8 +176,6 @@ class PanelManager
             throw new \InvalidArgumentException("Invalid panel type: {$panelType}. Must be 'pterodactyl' or 'calagopus'.");
         }
 
-        self::$activePanelType = $panelType;
-
         try {
             $config = App::getInstance(false)->getConfig();
             $config->setSetting(ConfigInterface::ACTIVE_PANEL_TYPE, $panelType);
@@ -187,10 +185,10 @@ class PanelManager
     }
 
     /**
-     * Clear the cached panel type (forces refresh on next call).
+     * Clear the cached panel type (no-op - panel type is always read fresh from database).
      */
     public static function clearCache(): void
     {
-        self::$activePanelType = null;
+        // No-op: panel type is always read fresh from database, so no cache to clear
     }
 }
