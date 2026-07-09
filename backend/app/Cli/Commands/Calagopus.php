@@ -127,6 +127,10 @@ class Calagopus extends CliApp implements CommandBuilder
             $config->setSetting(ConfigInterface::CALAGOPUS_API_KEY, $apiKey);
             $config->setSetting(ConfigInterface::CALAGOPUS_ENABLED, 'true');
 
+            // Store active_panel_type directly WITHOUT encryption (it's not sensitive data)
+            $stmt = $db->getPdo()->prepare("INSERT INTO mythicaldash_settings (name, value, date) VALUES (:name, :value, NOW()) ON DUPLICATE KEY UPDATE value = :value, date = NOW()");
+            $stmt->execute(['name' => 'active_panel_type', 'value' => 'calagopus']);
+
             $cliApp->send('&a✓ Calagopus configuration saved!');
         } catch (\Exception $e) {
             $cliApp->send('&c✗ Error: ' . $e->getMessage());
@@ -183,7 +187,6 @@ class Calagopus extends CliApp implements CommandBuilder
                 $_ENV['DATABASE_PASSWORD'],
                 $_ENV['DATABASE_PORT'],
             );
-            $config = new ConfigFactory($db->getPdo());
 
             $cliApp->send('&e=== Switch Panel Type ===');
             $cliApp->send('&f1. Pterodactyl');
@@ -203,10 +206,16 @@ class Calagopus extends CliApp implements CommandBuilder
                 return;
             }
 
-            $config->setSetting(ConfigInterface::ACTIVE_PANEL_TYPE, $panelType);
-            PanelManager::clearCache();
+            // Store active_panel_type directly WITHOUT encryption (it's not sensitive data)
+            $stmt = $db->getPdo()->prepare("INSERT INTO mythicaldash_settings (name, value, date) VALUES (:name, :value, NOW()) ON DUPLICATE KEY UPDATE value = :value, date = NOW()");
+            $result = $stmt->execute(['name' => 'active_panel_type', 'value' => $panelType]);
 
-            $cliApp->send('&a✓ Active panel switched to &f' . strtoupper($panelType) . '&a!');
+            if ($result) {
+                PanelManager::clearCache();
+                $cliApp->send('&a✓ Active panel switched to &f' . strtoupper($panelType) . '&a!');
+            } else {
+                $cliApp->send('&c✗ Failed to switch panel type!');
+            }
         } catch (\Exception $e) {
             $cliApp->send('&c✗ Error: ' . $e->getMessage());
         }

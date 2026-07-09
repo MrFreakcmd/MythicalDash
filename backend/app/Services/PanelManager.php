@@ -55,13 +55,25 @@ class PanelManager
         try {
             $config = App::getInstance(false)->getConfig();
             $panelType = $config->getDBSetting(ConfigInterface::ACTIVE_PANEL_TYPE, 'pterodactyl');
+
+            // Debug logging
+            error_log('[PanelManager] Read panel type from DB: ' . var_export($panelType, true));
+
+            if ($panelType && $panelType !== 'pterodactyl' && $panelType !== 'calagopus') {
+                error_log('[PanelManager] Invalid panel type value, using default: ' . $panelType);
+                return 'pterodactyl';
+            }
+
             if (!empty($panelType)) {
+                error_log('[PanelManager] Returning panel type: ' . $panelType);
                 return $panelType;
             }
         } catch (\Exception $e) {
+            error_log('[PanelManager] Exception reading panel type: ' . $e->getMessage());
             App::getInstance(false)->getLogger()->error('Failed to detect active panel type: ' . $e->getMessage());
         }
         // Final fallback only if DB read fails
+        error_log('[PanelManager] Falling back to pterodactyl');
         return 'pterodactyl';
     }
 
