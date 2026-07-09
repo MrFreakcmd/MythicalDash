@@ -64,9 +64,9 @@ class User extends Database
      */
     public static function register(string $username, string $password, string $email, string $first_name, string $last_name, string $ip, int $pterodactylUserId): void
     {
-        $config = App::getInstance(true)->getConfig();
+        $config = App::getInstance(false)->getConfig();
         try {
-            $appInstance = App::getInstance(true);
+            $appInstance = App::getInstance(false);
             $first_name = $appInstance->encrypt($first_name);
             $last_name = $appInstance->encrypt($last_name);
 

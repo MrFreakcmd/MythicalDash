@@ -54,10 +54,10 @@ class PanelManager
     {
         if (self::$activePanelType === null) {
             try {
-                $config = App::getInstance(true)->getConfig();
+                $config = App::getInstance(false)->getConfig();
                 self::$activePanelType = $config->getDBSetting(ConfigInterface::ACTIVE_PANEL_TYPE, 'pterodactyl');
             } catch (\Exception $e) {
-                App::getInstance(true)->getLogger()->error('Failed to detect active panel type: ' . $e->getMessage());
+                App::getInstance(false)->getLogger()->error('Failed to detect active panel type: ' . $e->getMessage());
                 self::$activePanelType = 'pterodactyl'; // Default fallback
             }
         }
@@ -95,7 +95,7 @@ class PanelManager
     public static function getClientApiInstance()
     {
         try {
-            $config = App::getInstance(true)->getConfig();
+            $config = App::getInstance(false)->getConfig();
 
             if (self::isCalagopus()) {
                 $baseUrl = $config->getDBSetting(ConfigInterface::CALAGOPUS_BASE_URL, '');
@@ -117,7 +117,7 @@ class PanelManager
                 return new PterodactylClient($baseUrl, $apiKey);
             }
         } catch (\Exception $e) {
-            App::getInstance(true)->getLogger()->error('Failed to get Client API instance: ' . $e->getMessage());
+            App::getInstance(false)->getLogger()->error('Failed to get Client API instance: ' . $e->getMessage());
 
             throw $e;
         }
@@ -133,7 +133,7 @@ class PanelManager
     public static function getAdminApiInstance()
     {
         try {
-            $config = App::getInstance(true)->getConfig();
+            $config = App::getInstance(false)->getConfig();
 
             if (self::isCalagopus()) {
                 $baseUrl = $config->getDBSetting(ConfigInterface::CALAGOPUS_BASE_URL, '');
@@ -155,7 +155,7 @@ class PanelManager
                 return new PterodactylAdmin($baseUrl, $apiKey);
             }
         } catch (\Exception $e) {
-            App::getInstance(true)->getLogger()->error('Failed to get Admin API instance: ' . $e->getMessage());
+            App::getInstance(false)->getLogger()->error('Failed to get Admin API instance: ' . $e->getMessage());
 
             throw $e;
         }
@@ -179,10 +179,10 @@ class PanelManager
         self::$activePanelType = $panelType;
 
         try {
-            $config = App::getInstance(true)->getConfig();
+            $config = App::getInstance(false)->getConfig();
             $config->setSetting(ConfigInterface::ACTIVE_PANEL_TYPE, $panelType);
         } catch (\Exception $e) {
-            App::getInstance(true)->getLogger()->error('Failed to set active panel type: ' . $e->getMessage());
+            App::getInstance(false)->getLogger()->error('Failed to set active panel type: ' . $e->getMessage());
         }
     }
 

@@ -52,7 +52,7 @@ class User extends UsersResource
      */
     public static function performLogin(string $pterodactylUserId, string $email, string $username, string $first_name, string $last_name, string $password): void
     {
-        $appInstance = App::getInstance(true);
+        $appInstance = App::getInstance(false);
 
         $config = $appInstance->getConfig();
         $userResource = new UsersResource($config->getDBSetting(ConfigInterface::PTERODACTYL_BASE_URL, ''), $config->getDBSetting(ConfigInterface::PTERODACTYL_API_KEY, ''));

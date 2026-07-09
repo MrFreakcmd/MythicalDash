@@ -34,7 +34,7 @@ use MythicalDash\Config\PublicConfig;
 
 $router->add('/api/system/settings', function (): void {
     App::init();
-    $appInstance = App::getInstance(true);
+    $appInstance = App::getInstance(false);
     $config = $appInstance->getConfig();
 
     $settingsPublic = PublicConfig::getPublicSettingsWithDefaults();

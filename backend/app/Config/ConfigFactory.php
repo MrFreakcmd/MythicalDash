@@ -203,7 +203,7 @@ class ConfigFactory
 	{
 		$stmt = $this->db->prepare("SELECT * FROM {$this->table_name} ORDER BY name ASC");
 		$stmt->execute();
-		$appInstance = App::getInstance(true);
+		$appInstance = App::getInstance(false);
 		$results = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
 		$settings = [];

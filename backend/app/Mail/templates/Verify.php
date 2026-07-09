@@ -44,11 +44,11 @@ class Verify extends Mail
         try {
             $template = self::getFinalTemplate($uuid);
             $template = str_replace('${token}', $verifyToken, $template);
-            $appName = App::getInstance(true)->getConfig()->getDBSetting(ConfigInterface::APP_NAME, 'MythicalSystems');
+            $appName = App::getInstance(false)->getConfig()->getDBSetting(ConfigInterface::APP_NAME, 'MythicalSystems');
             \MythicalDash\Chat\Mails\MailList::addEmail('Verify Your ' . $appName . ' Account - Complete Registration', $template, $uuid);
             // self::send($email, 'Verify your email', $template);
         } catch (\Exception $e) {
-            App::getInstance(true)->getLogger()->error('(' . APP_SOURCECODE_DIR . '/Mail/templates/Verify.php) [sendMail] Failed to send email: ' . $e->getMessage());
+            App::getInstance(false)->getLogger()->error('(' . APP_SOURCECODE_DIR . '/Mail/templates/Verify.php) [sendMail] Failed to send email: ' . $e->getMessage());
         }
     }
 
@@ -67,7 +67,7 @@ class Verify extends Mail
 
             return $template;
         } catch (\Exception $e) {
-            App::getInstance(true)->getLogger()->error('(' . APP_SOURCECODE_DIR . '/Mail/templates/Verify.php) [sendMail] Failed to process template: ' . $e->getMessage());
+            App::getInstance(false)->getLogger()->error('(' . APP_SOURCECODE_DIR . '/Mail/templates/Verify.php) [sendMail] Failed to process template: ' . $e->getMessage());
 
             return null;
         }
@@ -82,7 +82,7 @@ class Verify extends Mail
 
             return $template;
         } catch (\Exception $e) {
-            App::getInstance(true)->getLogger()->error('(' . APP_SOURCECODE_DIR . '/Mail/templates/Verify.php) [sendMail] Failed to process template: ' . $e->getMessage());
+            App::getInstance(false)->getLogger()->error('(' . APP_SOURCECODE_DIR . '/Mail/templates/Verify.php) [sendMail] Failed to process template: ' . $e->getMessage());
 
             return '';
         }

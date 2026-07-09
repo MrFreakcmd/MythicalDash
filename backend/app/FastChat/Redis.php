@@ -40,7 +40,7 @@ class Redis
 
     public function __construct()
     {
-        $app = App::getInstance(true);
+        $app = App::getInstance(false);
         $app->loadEnv();
         if (isset($_ENV['REDIS_HOST']) && isset($_ENV['REDIS_PASSWORD'])) {
             $host = $_ENV['REDIS_HOST'] ?? 'localhost';

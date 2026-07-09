@@ -55,7 +55,7 @@ class Verification extends Database
                 $query = $conn->prepare('INSERT INTO ' . self::TABLE_NAME . ' (code, user, type) VALUES (:code, :user, :type)');
                 $query->execute(['code' => $code, 'user' => $uuid, 'type' => (string) $type]);
             } else {
-                App::getInstance(true)->getLogger()->error("User with UUID {$uuid} does not exist.");
+                App::getInstance(false)->getLogger()->error("User with UUID {$uuid} does not exist.");
 
                 return;
             }
