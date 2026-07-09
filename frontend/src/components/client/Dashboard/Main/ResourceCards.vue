@@ -682,7 +682,7 @@ const databasesPercentage = computed(() => safePercentage(databases.value.used, 
 // Function to fetch data
 const fetchData = async () => {
     try {
-        const [resourcesData] = await Promise.all([Servers.getPterodactylResources()]);
+        const [resourcesData] = await Promise.all([Servers.getResources()]);
         if (resourcesData) {
             resources.value = resourcesData;
         }

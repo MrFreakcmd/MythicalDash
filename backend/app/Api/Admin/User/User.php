@@ -46,6 +46,7 @@ use MythicalDash\Middleware\PermissionMiddleware;
 use MythicalDash\Plugins\Events\Events\UserEvent;
 use MythicalDash\Chat\interface\UserActivitiesTypes;
 use MythicalDash\Services\Pterodactyl\Admin\Resources\UsersResource;
+use MythicalDash\Services\PanelManager;
 
 $router->get('/api/admin/users', function (): void {
     App::init();
@@ -417,11 +418,23 @@ $router->post('/api/admin/user/(.*)/delete', function ($userId): void {
         foreach (Servers::getUserServersList(User::getInfo($token, UserColumns::PTERODACTYL_USER_ID, false)) as $server) {
             Servers::deletePterodactylServer($server['id']);
         }
-        $pteroUsers = new UsersResource(
-            $appInstance->getConfig()->getDBSetting(ConfigInterface::PTERODACTYL_BASE_URL, ''),
-            $appInstance->getConfig()->getDBSetting(ConfigInterface::PTERODACTYL_API_KEY, '')
-        );
-        $pteroUsers->deleteUser(User::getInfo($token, UserColumns::PTERODACTYL_USER_ID, false));
+
+        // Use PanelManager to delete from the correct panel
+        try {
+            if (PanelManager::isPterodactyl()) {
+                $pteroUsers = new UsersResource(
+                    $appInstance->getConfig()->getDBSetting(ConfigInterface::PTERODACTYL_BASE_URL, ''),
+                    $appInstance->getConfig()->getDBSetting(ConfigInterface::PTERODACTYL_API_KEY, '')
+                );
+                $pteroUsers->deleteUser(User::getInfo($token, UserColumns::PTERODACTYL_USER_ID, false));
+            } elseif (PanelManager::isCalagopus()) {
+                $calagopusUsers = PanelManager::getAdminApiInstance();
+                // Calagopus delete logic here
+                $appInstance->getLogger()->info('Deleting user from Calagopus panel (user deletion handler pending)');
+            }
+        } catch (\Exception $e) {
+            $appInstance->getLogger()->error('Failed to delete user from panel: ' . $e->getMessage());
+        }
 
         UserActivities::add(
             $session->getInfo(UserColumns::UUID, false),

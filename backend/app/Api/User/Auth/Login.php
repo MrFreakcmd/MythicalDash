@@ -40,11 +40,12 @@ use MythicalDash\Config\ConfigInterface;
 use MythicalDash\Chat\columns\UserColumns;
 use MythicalDash\Chat\User\PermissionUtils;
 use MythicalDash\CloudFlare\CloudFlareRealIP;
-use MythicalDash\Hooks\Pterodactyl\Admin\Servers;
 use MythicalDash\Plugins\Events\Events\AuthEvent;
 use MythicalDash\Chat\IPRelationships\IPRelationship;
 use MythicalDash\Hooks\MythicalSystems\User\UUIDManager;
 use MythicalDash\Hooks\MythicalSystems\CloudFlare\Turnstile;
+use MythicalDash\Services\PanelManager;
+use MythicalDash\Hooks\Panel\Admin\User as PanelUser;
 
 $router->add('/api/user/auth/login', function (): void {
     global $eventManager;
@@ -131,7 +132,7 @@ $router->add('/api/user/auth/login', function (): void {
             UserColumns::USERNAME => 'username',
             UserColumns::EMAIL => 'email',
             UserColumns::UUID => 'UUID',
-            UserColumns::PTERODACTYL_USER_ID => 'Pterodactyl user ID',
+            UserColumns::PTERODACTYL_USER_ID => 'Panel user ID',
         ];
 
         foreach ($criticalFields as $field => $fieldName) {
@@ -148,8 +149,8 @@ $router->add('/api/user/auth/login', function (): void {
     }
 
     if ($userInfoArray[UserColumns::PTERODACTYL_USER_ID] == 0) {
-        $eventManager->emit(AuthEvent::onAuthLoginFailed(), ['login' => $login, 'error_code' => 'PTERODACTYL_USER_NOT_FOUND']);
-        $appInstance->BadRequest('Pterodactyl user not found', ['error_code' => 'PTERODACTYL_USER_NOT_FOUND']);
+        $eventManager->emit(AuthEvent::onAuthLoginFailed(), ['login' => $login, 'error_code' => 'PANEL_USER_NOT_FOUND']);
+        $appInstance->BadRequest('Panel user not found', ['error_code' => 'PANEL_USER_NOT_FOUND']);
     }
 
     // Check account verification if mail is enabled
@@ -188,10 +189,10 @@ $router->add('/api/user/auth/login', function (): void {
         setcookie('user_token', $loginResult, time() + 3600, '/');
     }
     /**
-     * Login user in Pterodactyl.
+     * Login user in the active panel.
      */
     try {
-        \MythicalDash\Hooks\Pterodactyl\Admin\User::performLogin(
+        PanelUser::performLogin(
             $userInfoArray[UserColumns::PTERODACTYL_USER_ID],
             $userInfoArray[UserColumns::EMAIL],
             $userInfoArray[UserColumns::USERNAME],
@@ -200,23 +201,23 @@ $router->add('/api/user/auth/login', function (): void {
             $userInfoArray[UserColumns::PASSWORD] ?? '',
         );
     } catch (\Exception $e) {
-        $appInstance->getLogger()->error('[Pterodactyl/Admin/User#performLogin:1] Failed to login user in Pterodactyl: ' . $e->getMessage());
-        $appInstance->InternalServerError('Internal Server Error', ['error_code' => 'PTERODACTYL_ERROR']);
+        $appInstance->getLogger()->error('[Panel/Admin/User#performLogin] Failed to login user in active panel: ' . $e->getMessage());
+        $appInstance->InternalServerError('Internal Server Error', ['error_code' => 'PANEL_ERROR']);
     }
     /**
-     * Import servers from Pterodactyl to MythicalDash.
+     * Import servers from active panel to MythicalDash.
      */
     try {
-        $pterodactylServers = Servers::getUserServersList($userInfoArray[UserColumns::PTERODACTYL_USER_ID]);
+        $panelServers = \MythicalDash\Hooks\Panel\Admin\Servers::getUserServersList($userInfoArray[UserColumns::PTERODACTYL_USER_ID]);
 
-        foreach ($pterodactylServers as $pterodactylServer) {
-            if (!Server::doesServerExistByPterodactylId($pterodactylServer['id'])) {
-                Server::create($pterodactylServer['id'], null, $userInfoArray[UserColumns::UUID]);
+        foreach ($panelServers as $panelServer) {
+            if (!Server::doesServerExistByPterodactylId($panelServer['id'])) {
+                Server::create($panelServer['id'], null, $userInfoArray[UserColumns::UUID]);
             }
         }
     } catch (\Exception $e) {
-        $appInstance->getLogger()->error('[Pterodactyl/Admin/User#performLogin:1] Failed to create servers in MythicalDash: ' . $e->getMessage());
-        $appInstance->InternalServerError('Internal Server Error', ['error_code' => 'PTERODACTYL_ERROR']);
+        $appInstance->getLogger()->error('[Panel/Admin/User#performLogin] Failed to import servers from active panel: ' . $e->getMessage());
+        $appInstance->InternalServerError('Internal Server Error', ['error_code' => 'PANEL_ERROR']);
     }
     $userUuid = $userInfoArray[UserColumns::UUID];
     $currentIP = CloudFlareRealIP::getRealIP();

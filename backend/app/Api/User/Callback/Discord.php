@@ -47,6 +47,8 @@ use MythicalDash\Chat\interface\UserActivitiesTypes;
 use MythicalDash\Plugins\Events\Events\DiscordEvent;
 use MythicalDash\Chat\IPRelationships\IPRelationship;
 use MythicalDash\Hooks\MythicalSystems\User\UUIDManager;
+use MythicalDash\Services\PanelManager;
+use MythicalDash\Hooks\Panel\Admin\User as PanelUser;
 
 // Discord Link Callback
 $router->get('/api/user/auth/callback/discord/link', function () {
@@ -191,10 +193,16 @@ $router->get('/api/user/auth/callback/discord/login', function () {
             exit;
         }
 
-        // Check if Pterodactyl is enabled
-        if ($config->getDBSetting(ConfigInterface::PTERODACTYL_BASE_URL, '') == '') {
+        // Check if active panel is properly configured
+        if (PanelManager::isPterodactyl() && $config->getDBSetting(ConfigInterface::PTERODACTYL_BASE_URL, '') == '') {
             $eventManager->emit(AuthEvent::onAuthLoginFailed(), ['login' => $email, 'error_code' => 'PTERODACTYL_NOT_ENABLED']);
             header('Location: ' . $helper->getSecureBaseUrl() . '/auth/login?error=pterodactyl_not_enabled');
+            exit;
+        }
+
+        if (PanelManager::isCalagopus() && $config->getDBSetting(ConfigInterface::CALAGOPUS_BASE_URL, '') == '') {
+            $eventManager->emit(AuthEvent::onAuthLoginFailed(), ['login' => $email, 'error_code' => 'CALAGOPUS_NOT_ENABLED']);
+            header('Location: ' . $helper->getSecureBaseUrl() . '/auth/login?error=calagopus_not_enabled');
             exit;
         }
 
@@ -285,10 +293,10 @@ $router->get('/api/user/auth/callback/discord/login', function () {
         }
 
         /**
-         * Login user in Pterodactyl.
+         * Login user in the active panel.
          */
         try {
-            MythicalDash\Hooks\Pterodactyl\Admin\User::performLogin(
+            PanelUser::performLogin(
                 $userInfoArray[UserColumns::PTERODACTYL_USER_ID],
                 $userInfoArray[UserColumns::EMAIL],
                 $userInfoArray[UserColumns::USERNAME],
@@ -297,13 +305,13 @@ $router->get('/api/user/auth/callback/discord/login', function () {
                 $userInfoArray[UserColumns::PASSWORD] ?? '',
             );
         } catch (Exception $e) {
-            $appInstance->getLogger()->error('[Discord Login] Failed to login user in Pterodactyl: ' . $e->getMessage());
-            header('Location: ' . $helper->getSecureBaseUrl() . '/auth/login?error=pterodactyl_error');
+            $appInstance->getLogger()->error('[Discord Login] Failed to login user in active panel: ' . $e->getMessage());
+            header('Location: ' . $helper->getSecureBaseUrl() . '/auth/login?error=panel_error');
             exit;
         }
 
         /**
-         * Import servers from Pterodactyl to MythicalDash.
+         * Import servers from active panel to MythicalDash.
          */
         try {
             $pterodactylServers = Servers::getUserServersList($userInfoArray[UserColumns::PTERODACTYL_USER_ID]);

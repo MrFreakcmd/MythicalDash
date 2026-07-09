@@ -1,5 +1,5 @@
 class Servers {
-    public static async getPterodactylServers() {
+    public static async getServers() {
         const response = await fetch('/api/user/session/servers', {
             method: 'GET',
         });
@@ -7,7 +7,7 @@ class Servers {
         return data.servers;
     }
 
-    public static async getPterodactylQueuedServers() {
+    public static async getQueuedServers() {
         const response = await fetch('/api/user/session/servers', {
             method: 'GET',
         });
@@ -15,8 +15,8 @@ class Servers {
         return data.servers_queue;
     }
 
-    public static async getPterodactylResources() {
-        const response = await fetch('/api/user/session/pterodactyl/resources', {
+    public static async getResources() {
+        const response = await fetch('/api/user/session/resources', {
             method: 'GET',
         });
         const data = await response.json();

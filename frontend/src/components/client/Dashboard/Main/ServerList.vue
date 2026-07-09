@@ -161,8 +161,8 @@ const createServer = () => {
 // Fetch servers
 const fetchServers = async () => {
     try {
-        const data = await Servers.getPterodactylServers();
-        const dataQueued = await Servers.getPterodactylQueuedServers();
+        const data = await Servers.getServers();
+        const dataQueued = await Servers.getQueuedServers();
         servers.value = data as Server[];
         queuedServers.value = dataQueued as QueuedServer[];
     } catch (error) {

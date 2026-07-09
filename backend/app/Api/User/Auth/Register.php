@@ -43,7 +43,7 @@ use MythicalDash\Plugins\Events\Events\ReferralsEvent;
 use MythicalDash\Hooks\MythicalSystems\User\UUIDManager;
 use MythicalDash\Hooks\MythicalSystems\CloudFlare\Turnstile;
 use MythicalDash\Services\PanelManager;
-use MythicalDash\Services\Pterodactyl\Admin\Resources\UsersResource;
+use MythicalDash\Hooks\Panel\Admin\User as PanelUser;
 
 $router->add('/api/user/auth/register', function (): void {
     global $eventManager;
@@ -184,41 +184,19 @@ $router->add('/api/user/auth/register', function (): void {
             $appInstance->BadRequest('Bad Request', ['error_code' => 'EMAIL_ALREADY_IN_USE']);
         }
 
-        // Use PanelManager to determine which panel is active
-        if (PanelManager::isCalagopus()) {
-            // Register with Calagopus
-            try {
-                $calagopusUserId = \MythicalDash\Services\Calagopus\Admin\Resources\UserResource::performRegister($firstName, $lastName, $username, $email, $password);
-                if ($calagopusUserId == 0 && $calagopusUserId != null) {
-                    $eventManager->emit(AuthEvent::onAuthRegisterFailed(), ['error_code' => 'CALAGOPUS_ERROR']);
-                    $appInstance->InternalServerError('Failed to register user in Calagopus panel', ['error_code' => 'CALAGOPUS_ERROR']);
-                }
-                $panelUserId = $calagopusUserId;
-            } catch (Exception $e) {
-                $eventManager->emit(AuthEvent::onAuthRegisterFailed(), ['error_code' => 'CALAGOPUS_ERROR']);
-                $appInstance->InternalServerError('Failed to register user in Calagopus panel', ['error_code' => 'CALAGOPUS_ERROR']);
-            }
-        } else {
-            // Register with Pterodactyl (default)
-            if ($config->getDBSetting(ConfigInterface::PTERODACTYL_BASE_URL, '') == '') {
-                $eventManager->emit(AuthEvent::onAuthRegisterFailed(), ['error_code' => 'PTERODACTYL_NOT_ENABLED']);
-                $appInstance->BadRequest('Pterodactyl is not enabled', ['error_code' => 'PTERODACTYL_NOT_ENABLED']);
+        // Use PanelManager to register on the active panel
+        try {
+            $panelUserId = PanelUser::performRegister($firstName, $lastName, $username, $email, $password);
+            if ($panelUserId === 0 || $panelUserId === null) {
+                $eventManager->emit(AuthEvent::onAuthRegisterFailed(), ['error_code' => 'PANEL_ERROR']);
+                $appInstance->InternalServerError('Failed to register user in active panel', ['error_code' => 'PANEL_ERROR']);
             }
 
-            try {
-                $pterodactylUserId = MythicalDash\Hooks\Pterodactyl\Admin\User::performRegister($firstName, $lastName, $username, $email, $password);
-                if ($pterodactylUserId == 0 && $pterodactylUserId != null) {
-                    $eventManager->emit(AuthEvent::onAuthRegisterFailed(), ['error_code' => 'PTERODACTYL_ERROR']);
-                    $appInstance->InternalServerError('Internal Server Error', ['error_code' => 'PTERODACTYL_ERROR']);
-                }
-                $pteroUsers = new UsersResource($appInstance->getConfig()->getDBSetting(ConfigInterface::PTERODACTYL_BASE_URL, ''), $appInstance->getConfig()->getDBSetting(ConfigInterface::PTERODACTYL_API_KEY, ''));
-
-                MythicalDash\Hooks\Pterodactyl\Admin\User::performUpdateUser($pteroUsers, $pterodactylUserId, $username, $firstName, $lastName, $email, $password);
-                $panelUserId = $pterodactylUserId;
-            } catch (Exception $e) {
-                $eventManager->emit(AuthEvent::onAuthRegisterFailed(), ['error_code' => 'PTERODACTYL_ERROR']);
-                $appInstance->InternalServerError('Internal Server Error', ['error_code' => 'PTERODACTYL_ERROR']);
-            }
+            // Update user on the panel
+            PanelUser::performUpdateUser($panelUserId, $username, $email, $firstName, $lastName, $password);
+        } catch (Exception $e) {
+            $eventManager->emit(AuthEvent::onAuthRegisterFailed(), ['error_code' => 'PANEL_ERROR']);
+            $appInstance->InternalServerError('Failed to register user in active panel: ' . $e->getMessage(), ['error_code' => 'PANEL_ERROR']);
         }
 
         User::register($username, $password, $email, $firstName, $lastName, CloudFlareRealIP::getRealIP(), $panelUserId);

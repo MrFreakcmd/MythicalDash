@@ -41,6 +41,8 @@ use MythicalDash\Plugins\Events\Events\AuthEvent;
 use MythicalDash\Chat\interface\UserActivitiesTypes;
 use MythicalDash\Chat\columns\EmailVerificationColumns;
 use MythicalDash\Hooks\MythicalSystems\CloudFlare\Turnstile;
+use MythicalDash\Services\PanelManager;
+use MythicalDash\Hooks\Panel\Admin\User as PanelUser;
 
 $router->get('/api/user/auth/reset', function (): void {
     global $eventManager;
@@ -158,7 +160,7 @@ $router->post('/api/user/auth/reset', function (): void {
             $token = App::getInstance(true)->encrypt(date('Y-m-d H:i:s') . $uuid . random_bytes(16) . base64_encode($code));
             User::updateInfo($userToken, UserColumns::ACCOUNT_TOKEN, $token, true);
             try {
-                MythicalDash\Hooks\Pterodactyl\Admin\User::performLogin(
+                PanelUser::performLogin(
                     $userInfoArray[UserColumns::PTERODACTYL_USER_ID],
                     $userInfoArray[UserColumns::EMAIL],
                     $userInfoArray[UserColumns::USERNAME],
@@ -172,8 +174,8 @@ $router->post('/api/user/auth/reset', function (): void {
                     CloudFlareRealIP::getRealIP()
                 );
             } catch (Exception $e) {
-                $appInstance->getLogger()->error('[Pterodactyl/Admin/User#performLogin:1] Failed to login user in Pterodactyl: ' . $e->getMessage());
-                $appInstance->InternalServerError('Internal Server Error', ['error_code' => 'PTERODACTYL_ERROR']);
+                $appInstance->getLogger()->error('[Panel/Admin/User#performLogin] Failed to login user in active panel: ' . $e->getMessage());
+                $appInstance->InternalServerError('Internal Server Error', ['error_code' => 'PANEL_ERROR']);
             }
             $eventManager->emit(AuthEvent::onAuthResetPasswordSuccess(), ['code' => $code]);
             $appInstance->OK('Password has been reset', []);

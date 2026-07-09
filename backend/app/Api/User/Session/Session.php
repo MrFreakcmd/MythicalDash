@@ -45,7 +45,8 @@ use MythicalDash\Hooks\Pterodactyl\Admin\Nodes;
 use MythicalDash\Hooks\Pterodactyl\Admin\Servers;
 use MythicalDash\Plugins\Events\Events\UserEvent;
 use MythicalDash\Chat\interface\UserActivitiesTypes;
-use MythicalDash\Services\Pterodactyl\Admin\Resources\UsersResource;
+use MythicalDash\Services\PanelManager;
+use MythicalDash\Hooks\Panel\Admin\User as PanelUser;
 
 $router->post('/api/user/session/info/update', function (): void {
     App::init();
@@ -189,7 +190,7 @@ $router->post('/api/user/session/password/change', function (): void {
                         UserColumns::FIRST_NAME,
                         UserColumns::LAST_NAME,
                     ], []);
-                    MythicalDash\Hooks\Pterodactyl\Admin\User::performLogin(
+                    PanelUser::performLogin(
                         $pterodactylUserId,
                         $userInfoArray[UserColumns::EMAIL],
                         $userInfoArray[UserColumns::USERNAME],
@@ -198,8 +199,8 @@ $router->post('/api/user/session/password/change', function (): void {
                         $newPassword
                     );
                 } catch (Exception $e) {
-                    $appInstance->getLogger()->error('[Session#changePassword] Failed to update Pterodactyl password: ' . $e->getMessage());
-                    // Continue even if Pterodactyl update fails
+                    $appInstance->getLogger()->error('[Session#changePassword] Failed to update active panel password: ' . $e->getMessage());
+                    // Continue even if panel update fails
                 }
             }
 
@@ -348,6 +349,23 @@ $router->get('/api/user/session/pterodactyl/resources', function (): void {
     ]);
 });
 
+$router->get('/api/user/session/resources', function (): void {
+    App::init();
+    $appInstance = App::getInstance(true);
+    $appInstance->allowOnlyGET();
+    $session = new Session($appInstance);
+    $accountToken = $session->SESSION_KEY;
+
+    $panelUserId = User::getInfo($accountToken, UserColumns::PTERODACTYL_USER_ID, false);
+
+    // Use panel-agnostic hook that routes to active panel
+    $resources = \MythicalDash\Hooks\Panel\Admin\Servers::getUserTotalResourcesUsage($panelUserId);
+
+    $appInstance->OK('User resources', [
+        'resources' => $resources,
+    ]);
+});
+
 $router->get('/api/user/session/servers', function (): void {
     App::init();
     $appInstance = App::getInstance(true);
@@ -434,11 +452,23 @@ $router->post('/api/user/session/delete-account', function (): void {
     foreach (Servers::getUserServersList(User::getInfo($accountToken, UserColumns::PTERODACTYL_USER_ID, false)) as $server) {
         Servers::deletePterodactylServer($server['id']);
     }
-    $pteroUsers = new UsersResource(
-        $appInstance->getConfig()->getDBSetting(ConfigInterface::PTERODACTYL_BASE_URL, ''),
-        $appInstance->getConfig()->getDBSetting(ConfigInterface::PTERODACTYL_API_KEY, '')
-    );
-    $pteroUsers->deleteUser(User::getInfo($accountToken, UserColumns::PTERODACTYL_USER_ID, false));
+
+    // Use PanelManager to delete from the correct panel
+    try {
+        if (PanelManager::isPterodactyl()) {
+            $pteroUsers = new UsersResource(
+                $appInstance->getConfig()->getDBSetting(ConfigInterface::PTERODACTYL_BASE_URL, ''),
+                $appInstance->getConfig()->getDBSetting(ConfigInterface::PTERODACTYL_API_KEY, '')
+            );
+            $pteroUsers->deleteUser(User::getInfo($accountToken, UserColumns::PTERODACTYL_USER_ID, false));
+        } elseif (PanelManager::isCalagopus()) {
+            $calagopusUsers = PanelManager::getAdminApiInstance();
+            // Calagopus delete logic here
+            $appInstance->getLogger()->info('Deleting user from Calagopus panel (user deletion handler pending)');
+        }
+    } catch (\Exception $e) {
+        $appInstance->getLogger()->error('Failed to delete user from panel: ' . $e->getMessage());
+    }
     User::delete($accountToken);
 
     UserActivities::add(
