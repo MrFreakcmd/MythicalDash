@@ -24,7 +24,7 @@ services:
           "localhost",
           "-u",
           "root",
-          "-pmythicaldsah_v3_root",
+          "-pmythicaldash_v3_root",
         ]
       timeout: 20s
       retries: 10
