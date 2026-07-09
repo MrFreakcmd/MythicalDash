@@ -91,9 +91,14 @@ $router->add('/api/user/auth/login', function (): void {
         $appInstance->BadRequest('Invalid login credentials', ['error_code' => 'INVALID_CREDENTIALS']);
     }
 
-    if ($config->getDBSetting(ConfigInterface::PTERODACTYL_BASE_URL, '') == '') {
+    if (PanelManager::isPterodactyl() && $config->getDBSetting(ConfigInterface::PTERODACTYL_BASE_URL, '') == '') {
         $eventManager->emit(AuthEvent::onAuthLoginFailed(), ['login' => $login, 'error_code' => 'PTERODACTYL_NOT_ENABLED']);
         $appInstance->BadRequest('Pterodactyl is not enabled', ['error_code' => 'PTERODACTYL_NOT_ENABLED']);
+    }
+
+    if (PanelManager::isCalagopus() && $config->getDBSetting(ConfigInterface::CALAGOPUS_BASE_URL, '') == '') {
+        $eventManager->emit(AuthEvent::onAuthLoginFailed(), ['login' => $login, 'error_code' => 'CALAGOPUS_NOT_ENABLED']);
+        $appInstance->BadRequest('Calagopus is not enabled', ['error_code' => 'CALAGOPUS_NOT_ENABLED']);
     }
 
     try {
