@@ -32,7 +32,7 @@
 namespace MythicalDash\Cli\Commands;
 
 use MythicalDash\App;
-use MythicalDash\Cli\CliApp;
+use MythicalDash\Cli\App as CliApp;
 use MythicalDash\Cli\CommandBuilder;
 use MythicalDash\Config\ConfigFactory;
 use MythicalDash\Config\ConfigInterface;
