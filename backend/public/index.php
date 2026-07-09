@@ -32,6 +32,27 @@
 use MythicalDash\App;
 
 /**
+ * Add global CORS headers for all API endpoints.
+ */
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
+// For development, allow all origins; for production, validate against whitelist
+if (!empty($origin) && $origin !== '*') {
+    header('Access-Control-Allow-Origin: ' . $origin);
+    header('Access-Control-Allow-Credentials: true');
+} else {
+    header('Access-Control-Allow-Origin: *');
+}
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS, PATCH');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+header('Access-Control-Max-Age: 86400');
+
+// Handle preflight requests
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+
+/**
  * Define the environment path.
  */
 define('APP_START', microtime(true));
