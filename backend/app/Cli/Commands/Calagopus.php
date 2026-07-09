@@ -61,7 +61,7 @@ class Calagopus extends CliApp implements CommandBuilder
     public static function execute(array $args): void
     {
         $cliApp = CliApp::getInstance();
-        $appInstance = App::getInstance(true);
+        $appInstance = App::getInstance(false);
 
         if (!isset($args[1])) {
             $cliApp->send('&cPlease provide a subcommand!');
@@ -281,7 +281,7 @@ class Calagopus extends CliApp implements CommandBuilder
 
             // Try connection
             try {
-                $userResource = new UserResource($calagopusUrl, $calagopusKey);
+                new UserResource($calagopusUrl, $calagopusKey);
                 $cliApp->send('&fAPI Connection: &aSuccessful');
             } catch (\Exception $e) {
                 $cliApp->send('&fAPI Connection: &c' . $e->getMessage());
