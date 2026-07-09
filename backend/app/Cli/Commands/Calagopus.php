@@ -42,6 +42,22 @@ use MythicalDash\Services\Calagopus\Admin\Resources\UserResource;
 
 class Calagopus extends CliApp implements CommandBuilder
 {
+    public static function getDescription(): string
+    {
+        return 'Manage Calagopus panel integration and configuration';
+    }
+
+    public static function getSubCommands(): array
+    {
+        return [
+            'configure' => 'Configure Calagopus settings',
+            'test' => 'Test Calagopus connection',
+            'switch' => 'Switch active panel type',
+            'status' => 'Show panel configuration status',
+            'debug' => 'Show debug information',
+        ];
+    }
+
     public static function execute(array $args): void
     {
         $cliApp = CliApp::getInstance();
@@ -55,7 +71,7 @@ class Calagopus extends CliApp implements CommandBuilder
 
         switch ($args[1]) {
             case 'configure':
-                self::configureCatagopus($cliApp, $appInstance);
+                self::configureCalagopus($cliApp, $appInstance);
                 break;
             case 'test':
                 self::testConnection($cliApp, $appInstance);
@@ -75,7 +91,7 @@ class Calagopus extends CliApp implements CommandBuilder
         }
     }
 
-    private static function configureCatagopus(CliApp $cliApp, App $appInstance): void
+    private static function configureCalagopus(CliApp $cliApp, App $appInstance): void
     {
         try {
             $appInstance->loadEnv();
@@ -134,7 +150,7 @@ class Calagopus extends CliApp implements CommandBuilder
             $apiKey = $config->getDBSetting(ConfigInterface::CALAGOPUS_API_KEY, '');
 
             if (empty($baseUrl) || empty($apiKey)) {
-                $cliApp->send('&cCatagopus is not configured. Run &ycalagopus configure&c first.');
+                $cliApp->send('&cCalagopus is not configured. Run &ycalagopus configure&c first.');
 
                 return;
             }

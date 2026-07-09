@@ -67,8 +67,18 @@ class CalagopusClient
      */
     protected function request(string $method, string $endpoint, array $options = []): array
     {
-        $response = $this->httpClient->request($method, $endpoint, $options);
+        try {
+            $response = $this->httpClient->request($method, $endpoint, $options);
+            $contents = $response->getBody()->getContents();
+            $decoded = json_decode($contents, true);
 
-        return json_decode($response->getBody()->getContents(), true);
+            if ($decoded === null && json_last_error() !== JSON_ERROR_NONE) {
+                throw new \RuntimeException('Failed to decode API response: ' . json_last_error_msg());
+            }
+
+            return $decoded ?? [];
+        } catch (GuzzleException $e) {
+            throw $e;
+        }
     }
 }

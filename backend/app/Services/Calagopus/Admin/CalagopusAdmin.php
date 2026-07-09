@@ -34,6 +34,7 @@ namespace MythicalDash\Services\Calagopus\Admin;
 use MythicalDash\App;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
+use MythicalDash\Services\Calagopus\Exceptions\AuthenticationException;
 
 class CalagopusAdmin
 {
@@ -70,24 +71,58 @@ class CalagopusAdmin
     {
         try {
             $response = $this->httpClient->request($method, $endpoint, $options);
+            $statusCode = $response->getStatusCode();
 
-            if ($response->getStatusCode() === 204) {
-                App::getInstance(true)->getLogger()->error('Calagopus Admin API returned 204 status code');
-
-                return [];
-            }
-            if ($response->getStatusCode() === 404) {
-                App::getInstance(true)->getLogger()->error('Calagopus Admin API returned 404 status code');
-
-                return [];
-            }
-            if ($response->getStatusCode() === 401) {
-                App::getInstance(true)->getLogger()->error('Calagopus Admin API returned 401 status code');
+            // Handle specific status codes
+            if ($statusCode === 204) {
+                App::getInstance(true)->getLogger()->debug('Calagopus Admin API returned 204 No Content');
 
                 return [];
             }
 
-            return json_decode($response->getBody()->getContents(), true);
+            if ($statusCode === 401) {
+                App::getInstance(true)->getLogger()->error('Calagopus Admin API returned 401 Unauthorized - check API credentials');
+
+                return [];
+            }
+
+            if ($statusCode === 403) {
+                App::getInstance(true)->getLogger()->error('Calagopus Admin API returned 403 Forbidden - insufficient permissions');
+
+                return [];
+            }
+
+            if ($statusCode === 404) {
+                App::getInstance(true)->getLogger()->warning('Calagopus Admin API returned 404 Not Found');
+
+                return [];
+            }
+
+            // Handle server errors
+            if ($statusCode >= 500) {
+                App::getInstance(true)->getLogger()->error("Calagopus Admin API returned {$statusCode} server error");
+
+                return [];
+            }
+
+            // Handle client errors not explicitly handled above
+            if ($statusCode >= 400) {
+                App::getInstance(true)->getLogger()->warning("Calagopus Admin API returned {$statusCode} client error");
+
+                return [];
+            }
+
+            // Decode successful response
+            $contents = $response->getBody()->getContents();
+            $decoded = json_decode($contents, true);
+
+            if ($decoded === null && json_last_error() !== JSON_ERROR_NONE) {
+                App::getInstance(true)->getLogger()->error('Failed to decode Calagopus Admin API response: ' . json_last_error_msg());
+
+                return [];
+            }
+
+            return $decoded ?? [];
         } catch (GuzzleException $e) {
             App::getInstance(true)->getLogger()->error('Failed to send request to Calagopus Admin API: ' . $e->getMessage());
 

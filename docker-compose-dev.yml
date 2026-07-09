@@ -44,8 +44,10 @@ services:
       retries: 10
 
   backend:
-    image: ghcr.io/mrfreakcmd/mythicaldash_v3-backend:dev
-    pull_policy: always
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: mythicaldash-backend:local
     container_name: mythicaldash_v3_backend
     restart: unless-stopped
     environment:
