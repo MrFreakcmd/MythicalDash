@@ -144,4 +144,5 @@
 		"*",
 		"opcache"
 	],
+	"makefile.configureOnOpen": true,
 }
