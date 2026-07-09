@@ -45,35 +45,36 @@ class PanelManager
 {
     /**
      * Get the active panel type (always fresh from database, no caching).
-     * This must always return the current value because panel type can change
-     * at runtime and registration/API operations depend on accuracy.
+     * Reads active_panel_type directly WITHOUT decryption since it's stored as plain text.
      *
      * @return string Either 'pterodactyl' or 'calagopus'
      */
     public static function getActivePanelType(): string
     {
         try {
-            $config = App::getInstance(false)->getConfig();
-            $panelType = $config->getDBSetting(ConfigInterface::ACTIVE_PANEL_TYPE, 'pterodactyl');
+            $app = App::getInstance(false);
+            $db = $app->getDatabase();
+            $pdo = $db->getPdo();
 
-            // Debug logging
-            error_log('[PanelManager] Read panel type from DB: ' . var_export($panelType, true));
+            // Read active_panel_type directly from database without decryption
+            // (it's stored as plain text, not encrypted)
+            $stmt = $pdo->prepare("SELECT value FROM mythicaldash_settings WHERE name = 'active_panel_type' LIMIT 1");
+            $stmt->execute();
+            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
 
-            if ($panelType && $panelType !== 'pterodactyl' && $panelType !== 'calagopus') {
-                error_log('[PanelManager] Invalid panel type value, using default: ' . $panelType);
-                return 'pterodactyl';
-            }
+            if ($result && !empty($result['value'])) {
+                $panelType = $result['value'];
 
-            if (!empty($panelType)) {
-                error_log('[PanelManager] Returning panel type: ' . $panelType);
-                return $panelType;
+                // Validate it's one of the two valid values
+                if (\in_array($panelType, ['pterodactyl', 'calagopus'], true)) {
+                    return $panelType;
+                }
             }
         } catch (\Exception $e) {
-            error_log('[PanelManager] Exception reading panel type: ' . $e->getMessage());
             App::getInstance(false)->getLogger()->error('Failed to detect active panel type: ' . $e->getMessage());
         }
+
         // Final fallback only if DB read fails
-        error_log('[PanelManager] Falling back to pterodactyl');
         return 'pterodactyl';
     }
 

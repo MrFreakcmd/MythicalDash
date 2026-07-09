@@ -233,8 +233,13 @@ class Calagopus extends CliApp implements CommandBuilder
                 $_ENV['DATABASE_PORT'],
             );
             $config = new ConfigFactory($db->getPdo());
+            $pdo = $db->getPdo();
 
-            $activePanelType = $config->getDBSetting(ConfigInterface::ACTIVE_PANEL_TYPE, 'pterodactyl');
+            // Read active_panel_type directly from database (it's stored as plain text, not encrypted)
+            $stmt = $pdo->prepare("SELECT value FROM mythicaldash_settings WHERE name = 'active_panel_type' LIMIT 1");
+            $stmt->execute();
+            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            $activePanelType = ($result && !empty($result['value'])) ? $result['value'] : 'pterodactyl';
 
             $cliApp->send('&e=== Panel Configuration Status ===');
             $cliApp->send('&fActive Panel: &a' . strtoupper($activePanelType));
