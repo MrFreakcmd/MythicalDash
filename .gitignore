@@ -7,3 +7,5 @@ count-results/
 MythicalDash.zip
 *.mypycache
 .env
+graphify-out/
+raw/

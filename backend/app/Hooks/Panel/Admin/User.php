@@ -57,7 +57,7 @@ class User
         if (PanelManager::isPterodactyl()) {
             return \MythicalDash\Hooks\Pterodactyl\Admin\User::performRegister($firstName, $lastName, $username, $email, $password);
         } elseif (PanelManager::isCalagopus()) {
-            return \MythicalDash\Services\Calagopus\Admin\Resources\UserResource::performRegister($firstName, $lastName, $username, $email, $password);
+            return \MythicalDash\Hooks\Calagopus\Admin\User::performRegister($firstName, $lastName, $username, $email, $password);
         }
 
         throw new \Exception('No active panel configured');
@@ -80,8 +80,7 @@ class User
         if (PanelManager::isPterodactyl()) {
             \MythicalDash\Hooks\Pterodactyl\Admin\User::performLogin($userId, $email, $username, $firstName, $lastName, $password);
         } elseif (PanelManager::isCalagopus()) {
-            // Calagopus login handler - implementation required for Calagopus support
-            throw new \Exception('Calagopus user login handler - not yet implemented. Please contact support.');
+            \MythicalDash\Hooks\Calagopus\Admin\User::performLogin($userId, $email, $username, $firstName, $lastName, $password);
         } else {
             throw new \Exception('No active panel configured');
         }
@@ -108,8 +107,11 @@ class User
             );
             \MythicalDash\Hooks\Pterodactyl\Admin\User::performUpdateUser($pteroUsers, $userId, $username, $firstName, $lastName, $email, $password);
         } elseif (PanelManager::isCalagopus()) {
-            // Calagopus update handler - implementation required for Calagopus support
-            throw new \Exception('Calagopus user update handler - not yet implemented. Please contact support.');
+            $calagopusUsers = new \MythicalDash\Services\Calagopus\Admin\Resources\UserResource(
+                App::getInstance(false)->getConfig()->getDBSetting('calagopus_base_url', ''),
+                App::getInstance(false)->getConfig()->getDBSetting('calagopus_api_key', '')
+            );
+            \MythicalDash\Hooks\Calagopus\Admin\User::performUpdateUser($calagopusUsers, (string) $userId, $username, $firstName, $lastName, $email, $password);
         } else {
             throw new \Exception('No active panel configured');
         }

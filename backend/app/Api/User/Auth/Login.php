@@ -198,7 +198,7 @@ $router->add('/api/user/auth/login', function (): void {
             $userInfoArray[UserColumns::USERNAME],
             $userInfoArray[UserColumns::FIRST_NAME] ?? '',
             $userInfoArray[UserColumns::LAST_NAME] ?? '',
-            $userInfoArray[UserColumns::PASSWORD] ?? '',
+            $password,  // Use the plain-text password from the login request, not the hashed one from database
         );
     } catch (\Exception $e) {
         $appInstance->getLogger()->error('[Panel/Admin/User#performLogin] Failed to login user in active panel: ' . $e->getMessage());
