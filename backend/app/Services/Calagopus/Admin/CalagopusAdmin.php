@@ -72,61 +72,60 @@ class CalagopusAdmin
         try {
             $response = $this->httpClient->request($method, $endpoint, $options);
             $statusCode = $response->getStatusCode();
+            $contents = $response->getBody()->getContents();
 
             // Handle specific status codes
             if ($statusCode === 204) {
                 App::getInstance(true)->getLogger()->debug('Calagopus Admin API returned 204 No Content');
-
                 return [];
             }
 
             if ($statusCode === 401) {
-                App::getInstance(true)->getLogger()->error('Calagopus Admin API returned 401 Unauthorized - check API credentials');
-
-                return [];
+                $error = "Calagopus Admin API returned 401 Unauthorized - check API credentials. Base URL: {$this->baseUrl}";
+                App::getInstance(true)->getLogger()->error($error);
+                throw new AuthenticationException($error);
             }
 
             if ($statusCode === 403) {
-                App::getInstance(true)->getLogger()->error('Calagopus Admin API returned 403 Forbidden - insufficient permissions');
-
-                return [];
+                $error = "Calagopus Admin API returned 403 Forbidden - insufficient permissions";
+                App::getInstance(true)->getLogger()->error($error);
+                throw new \MythicalDash\Services\Calagopus\Exceptions\PermissionException($error);
             }
 
             if ($statusCode === 404) {
-                App::getInstance(true)->getLogger()->warning('Calagopus Admin API returned 404 Not Found');
-
-                return [];
+                $error = "Calagopus Admin API returned 404 Not Found for endpoint: {$endpoint}";
+                App::getInstance(true)->getLogger()->warning($error);
+                throw new \MythicalDash\Services\Calagopus\Exceptions\ResourceNotFoundException($error);
             }
 
             // Handle server errors
             if ($statusCode >= 500) {
-                App::getInstance(true)->getLogger()->error("Calagopus Admin API returned {$statusCode} server error");
-
-                return [];
+                $error = "Calagopus Admin API returned {$statusCode} server error. Response: " . substr($contents, 0, 500);
+                App::getInstance(true)->getLogger()->error($error);
+                throw new \Exception($error);
             }
 
             // Handle client errors not explicitly handled above
             if ($statusCode >= 400) {
-                App::getInstance(true)->getLogger()->warning("Calagopus Admin API returned {$statusCode} client error");
-
-                return [];
+                $error = "Calagopus Admin API returned {$statusCode} client error. Response: " . substr($contents, 0, 500);
+                App::getInstance(true)->getLogger()->warning($error);
+                throw new \Exception($error);
             }
 
             // Decode successful response
-            $contents = $response->getBody()->getContents();
             $decoded = json_decode($contents, true);
 
             if ($decoded === null && json_last_error() !== JSON_ERROR_NONE) {
-                App::getInstance(true)->getLogger()->error('Failed to decode Calagopus Admin API response: ' . json_last_error_msg());
-
-                return [];
+                $error = 'Failed to decode Calagopus Admin API response: ' . json_last_error_msg() . '. Raw: ' . substr($contents, 0, 500);
+                App::getInstance(true)->getLogger()->error($error);
+                throw new \Exception($error);
             }
 
             return $decoded ?? [];
         } catch (GuzzleException $e) {
-            App::getInstance(true)->getLogger()->error('Failed to send request to Calagopus Admin API: ' . $e->getMessage());
-
-            return [];
+            $error = 'Failed to send request to Calagopus Admin API: ' . $e->getMessage() . '. Base URL: ' . $this->baseUrl;
+            App::getInstance(true)->getLogger()->error($error);
+            throw new \Exception($error, 0, $e);
         }
     }
 }

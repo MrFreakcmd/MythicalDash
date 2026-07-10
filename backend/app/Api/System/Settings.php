@@ -34,19 +34,35 @@ use MythicalDash\Config\PublicConfig;
 
 $router->add('/api/system/settings', function (): void {
     App::init();
-    $appInstance = App::getInstance(false);
-    $config = $appInstance->getConfig();
+    try {
+        $appInstance = App::getInstance(false);
+        $config = $appInstance->getConfig();
 
-    $settingsPublic = PublicConfig::getPublicSettingsWithDefaults();
-    // Retrieve actual settings with defaults in a single array map
-    $settings = $config->getSettings(array_keys($settingsPublic));
+        $settingsPublic = PublicConfig::getPublicSettingsWithDefaults();
 
-    // Fill in any missing settings with defaults
-    foreach ($settingsPublic as $key => $defaultValue) {
-        if (!isset($settings[$key])) {
-            $settings[$key] = $defaultValue;
+        // Retrieve actual settings with defaults in a single array map
+        try {
+            $settings = $config->getSettings(array_keys($settingsPublic));
+        } catch (\Exception $e) {
+            // If database query fails (empty table, migration issues, etc), use defaults
+            $appInstance->getLogger()->warning('Failed to fetch settings from database: ' . $e->getMessage() . '. Using defaults.');
+            $settings = [];
         }
-    }
 
-    App::OK('Sure here are the settings you were looking for', ['settings' => $settings]);
+        // Fill in any missing settings with defaults
+        foreach ($settingsPublic as $key => $defaultValue) {
+            if (!isset($settings[$key]) || empty($settings[$key])) {
+                $settings[$key] = $defaultValue;
+            }
+        }
+
+        App::OK('Sure here are the settings you were looking for', ['settings' => $settings, 'core' => []]);
+    } catch (\Exception $e) {
+        // Final fallback: return defaults if anything goes wrong
+        $appInstance = App::getInstance(false);
+        $appInstance->getLogger()->error('Settings endpoint error: ' . $e->getMessage());
+
+        $settingsPublic = PublicConfig::getPublicSettingsWithDefaults();
+        App::OK('Sure here are the settings you were looking for', ['settings' => $settingsPublic, 'core' => []]);
+    }
 });

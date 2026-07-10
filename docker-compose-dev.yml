@@ -75,7 +75,6 @@ services:
       - ./backend/app:/var/www/html/app
       - ./backend/storage/packages:/var/www/html/storage/packages
       - mythicaldash_v3_attachments:/var/www/html/public/attachments
-      - ./.env:/var/www/html/storage/.env
       - mythicaldash_v3_snapshots:/var/www/html/storage/backups
     networks:
       - mythicaldash_v3_network
