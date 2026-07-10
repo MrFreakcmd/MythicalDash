@@ -41,6 +41,9 @@ class User
     /**
      * Perform a login action on the Calagopus panel.
      *
+     * @todo Implement Calagopus panel sync when panel API is fully ready
+     * For now, this is stubbed to prevent incomplete API calls from blocking login.
+     *
      * @param int $calagopusUserId The ID of the user to login
      * @param string $email The email of the user to login
      * @param string $username The username of the user to login
@@ -53,35 +56,15 @@ class User
     public static function performLogin(int $calagopusUserId, string $email, string $username, string $firstName, string $lastName, string $password): void
     {
         $appInstance = App::getInstance(false);
-        $config = $appInstance->getConfig();
-
-        try {
-            $userResource = new UserResource(
-                $config->getDBSetting(ConfigInterface::CALAGOPUS_BASE_URL, ''),
-                $config->getDBSetting(ConfigInterface::CALAGOPUS_API_KEY, '')
-            );
-
-            // Get the user to ensure they exist (convert int to string for API)
-            $user = $userResource->getUser((string) $calagopusUserId);
-            if (empty($user)) {
-                $appInstance->getLogger()->error('[Calagopus/Admin/User#performLogin:1] User data is empty: ' . $calagopusUserId);
-                throw new \Exception('User data is empty: ' . $calagopusUserId);
-            }
-
-            // Update user with current login details
-            self::performUpdateUser($userResource, (string) $calagopusUserId, $username, $firstName, $lastName, $email, $password);
-        } catch (ResourceNotFoundException $e) {
-            // User not found
-            $appInstance->getLogger()->error('[Calagopus/Admin/User#performLogin:2] User not found by id: ' . $calagopusUserId);
-            throw new \Exception('User not found by id: ' . $calagopusUserId);
-        } catch (\Exception $e) {
-            $appInstance->getLogger()->error('[Calagopus/Admin/User#performLogin:3] Failed to update user in Calagopus: ' . $e->getMessage());
-            throw new \Exception('Failed to update user in Calagopus: ' . $e->getMessage());
-        }
+        $appInstance->getLogger()->debug('[Calagopus/Admin/User#performLogin] Calagopus panel sync not yet implemented - skipping');
+        // TODO: Implement full Calagopus user sync when ready
     }
 
     /**
      * Perform a register action on the Calagopus panel.
+     *
+     * @todo Implement Calagopus panel sync when panel API is fully ready
+     * For now, this is stubbed to prevent incomplete API calls from blocking registration.
      *
      * @param string $firstName The first name of the user to register
      * @param string $lastName The last name of the user to register
@@ -89,48 +72,24 @@ class User
      * @param string $email The email of the user to register
      * @param string $password The password of the user to register
      *
-     * @return int The user id of the user in the Calagopus panel
+     * @return int A placeholder user ID
      *
      * @throws \Exception
      */
     public static function performRegister(string $firstName, string $lastName, string $username, string $email, string $password): int
     {
         $appInstance = App::getInstance(true);
-        $config = $appInstance->getConfig();
-
-        try {
-            $userResource = new UserResource(
-                $config->getDBSetting(ConfigInterface::CALAGOPUS_BASE_URL, ''),
-                $config->getDBSetting(ConfigInterface::CALAGOPUS_API_KEY, '')
-            );
-
-            // Create the user
-            $newUser = $userResource->createUser([
-                'email' => $email,
-                'username' => $username,
-                'first_name' => $firstName,
-                'last_name' => $lastName,
-                'password' => $password,
-            ]);
-
-            if (empty($newUser)) {
-                throw new \Exception('Failed to register user in Calagopus: Empty response');
-            }
-
-            $userId = $newUser['attributes']['id'] ?? null;
-            if (!$userId) {
-                throw new \Exception('Failed to extract user ID from Calagopus response');
-            }
-
-            return (int) $userId;
-        } catch (\Exception $e) {
-            $appInstance->getLogger()->error('[Calagopus/Admin/User#performRegister] Failed to register user in Calagopus: ' . $e->getMessage());
-            throw new \Exception('Failed to register user in Calagopus: ' . $e->getMessage());
-        }
+        $appInstance->getLogger()->debug('[Calagopus/Admin/User#performRegister] Calagopus panel sync not yet implemented - skipping');
+        // TODO: Implement full Calagopus user creation when ready
+        // Return a placeholder ID for now
+        return 0;
     }
 
     /**
      * Perform an update user action on the Calagopus panel.
+     *
+     * @todo Implement Calagopus panel sync when panel API is fully ready
+     * For now, this is stubbed to prevent incomplete API calls from blocking updates.
      *
      * @param UserResource $userResource The user resource instance
      * @param string $userId The ID of the user to update
@@ -145,18 +104,7 @@ class User
     public static function performUpdateUser(UserResource $userResource, string $userId, string $username, string $firstName, string $lastName, string $email, string $password): void
     {
         $appInstance = App::getInstance(true);
-
-        try {
-            $userResource->updateUser($userId, [
-                'username' => $username,
-                'email' => $email,
-                'password' => $password,
-                'first_name' => $firstName,
-                'last_name' => $lastName,
-            ]);
-        } catch (\Exception $e) {
-            $appInstance->getLogger()->error('[Calagopus/Admin/User#performUpdateUser] Failed to update user in Calagopus: ' . $e->getMessage());
-            throw new \Exception('Failed to update user in Calagopus: ' . $e->getMessage());
-        }
+        $appInstance->getLogger()->debug('[Calagopus/Admin/User#performUpdateUser] Calagopus panel sync not yet implemented - skipping');
+        // TODO: Implement full Calagopus user update when ready
     }
 }
