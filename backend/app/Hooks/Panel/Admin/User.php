@@ -32,6 +32,7 @@
 namespace MythicalDash\Hooks\Panel\Admin;
 
 use MythicalDash\App;
+use MythicalDash\Config\ConfigInterface;
 use MythicalDash\Services\PanelManager;
 
 /**
@@ -108,8 +109,8 @@ class User
             \MythicalDash\Hooks\Pterodactyl\Admin\User::performUpdateUser($pteroUsers, $userId, $username, $firstName, $lastName, $email, $password);
         } elseif (PanelManager::isCalagopus()) {
             $calagopusUsers = new \MythicalDash\Services\Calagopus\Admin\Resources\UserResource(
-                App::getInstance(false)->getConfig()->getDBSetting('calagopus_base_url', ''),
-                App::getInstance(false)->getConfig()->getDBSetting('calagopus_api_key', '')
+                App::getInstance(false)->getConfig()->getDBSetting(ConfigInterface::CALAGOPUS_BASE_URL, ''),
+                App::getInstance(false)->getConfig()->getDBSetting(ConfigInterface::CALAGOPUS_API_KEY, '')
             );
             \MythicalDash\Hooks\Calagopus\Admin\User::performUpdateUser($calagopusUsers, (string) $userId, $username, $firstName, $lastName, $email, $password);
         } else {
