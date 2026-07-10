@@ -41,7 +41,7 @@ class User
     /**
      * Perform a login action on the Calagopus panel.
      *
-     * @param string $calagopusUserId The UUID of the user to login
+     * @param int $calagopusUserId The ID of the user to login
      * @param string $email The email of the user to login
      * @param string $username The username of the user to login
      * @param string $firstName The first name of the user to login
@@ -50,7 +50,7 @@ class User
      *
      * @throws \Exception
      */
-    public static function performLogin(string $calagopusUserId, string $email, string $username, string $firstName, string $lastName, string $password): void
+    public static function performLogin(int $calagopusUserId, string $email, string $username, string $firstName, string $lastName, string $password): void
     {
         $appInstance = App::getInstance(false);
         $config = $appInstance->getConfig();
@@ -61,15 +61,15 @@ class User
                 $config->getDBSetting(ConfigInterface::CALAGOPUS_API_KEY, '')
             );
 
-            // Get the user to ensure they exist
-            $user = $userResource->getUser($calagopusUserId);
+            // Get the user to ensure they exist (convert int to string for API)
+            $user = $userResource->getUser((string) $calagopusUserId);
             if (empty($user)) {
                 $appInstance->getLogger()->error('[Calagopus/Admin/User#performLogin:1] User data is empty: ' . $calagopusUserId);
                 throw new \Exception('User data is empty: ' . $calagopusUserId);
             }
 
             // Update user with current login details
-            self::performUpdateUser($userResource, $calagopusUserId, $username, $firstName, $lastName, $email, $password);
+            self::performUpdateUser($userResource, (string) $calagopusUserId, $username, $firstName, $lastName, $email, $password);
         } catch (ResourceNotFoundException $e) {
             // User not found
             $appInstance->getLogger()->error('[Calagopus/Admin/User#performLogin:2] User not found by id: ' . $calagopusUserId);
@@ -89,11 +89,11 @@ class User
      * @param string $email The email of the user to register
      * @param string $password The password of the user to register
      *
-     * @return string The user id of the user in the Calagopus panel
+     * @return int The user id of the user in the Calagopus panel
      *
      * @throws \Exception
      */
-    public static function performRegister(string $firstName, string $lastName, string $username, string $email, string $password): string
+    public static function performRegister(string $firstName, string $lastName, string $username, string $email, string $password): int
     {
         $appInstance = App::getInstance(true);
         $config = $appInstance->getConfig();
@@ -117,7 +117,12 @@ class User
                 throw new \Exception('Failed to register user in Calagopus: Empty response');
             }
 
-            return $newUser['attributes']['id'];
+            $userId = $newUser['attributes']['id'] ?? null;
+            if (!$userId) {
+                throw new \Exception('Failed to extract user ID from Calagopus response');
+            }
+
+            return (int) $userId;
         } catch (\Exception $e) {
             $appInstance->getLogger()->error('[Calagopus/Admin/User#performRegister] Failed to register user in Calagopus: ' . $e->getMessage());
             throw new \Exception('Failed to register user in Calagopus: ' . $e->getMessage());
