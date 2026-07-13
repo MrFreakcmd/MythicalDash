@@ -47,4 +47,9 @@ class AuthenticationException extends CalagopusException
     {
         return new self('API token has expired.');
     }
+
+    public static function apiError(string $message): self
+    {
+        return new self('Authentication API error: ' . $message);
+    }
 }

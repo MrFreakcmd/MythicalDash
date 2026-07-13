@@ -41,6 +41,9 @@ use MythicalDash\Mail\templates\NewLogin;
 use MythicalDash\Chat\columns\UserColumns;
 use MythicalDash\Mail\templates\ResetPassword;
 use MythicalDash\Chat\columns\EmailVerificationColumns;
+use MythicalDash\Services\PanelManager;
+use MythicalDash\Services\Calagopus\Auth\CalagopusAuth;
+use MythicalDash\Services\Calagopus\Exceptions\AuthenticationException;
 
 class User extends Database
 {
@@ -331,14 +334,41 @@ class User extends Database
     }
 
     /**
-     * Login the user.
+     * Login the user (supports both Pterodactyl and Calagopus authentication).
      *
-     * @param string $login The login of the user
+     * @param string $login The login of the user (username or email)
      * @param string $password The password of the user
      *
-     * @return string If the login was successful
+     * @return string The user token if login was successful, 'false' otherwise
      */
     public static function login(string $login, string $password): string
+    {
+        try {
+            $appInstance = App::getInstance(true);
+            $config = $appInstance->getConfig();
+
+            // Determine active panel and route authentication accordingly
+            if (PanelManager::isCalagopus()) {
+                return self::loginCalagopus($login, $password, $config);
+            } else {
+                return self::loginPterodactyl($login, $password);
+            }
+        } catch (\Exception $e) {
+            App::getInstance(true)->getLogger()->error('Failed to login user: ' . $e->getMessage());
+
+            return 'false';
+        }
+    }
+
+    /**
+     * Authenticate user against local database (Pterodactyl mode).
+     *
+     * @param string $login Username or email
+     * @param string $password Plain text password
+     *
+     * @return string User token if successful, 'false' otherwise
+     */
+    private static function loginPterodactyl(string $login, string $password): string
     {
         try {
             $con = self::getPdoConnection();
@@ -346,6 +376,7 @@ class User extends Database
             $stmt->bindParam(':login', $login);
             $stmt->execute();
             $user = $stmt->fetch(\PDO::FETCH_ASSOC);
+
             if ($user) {
                 if (App::getInstance(true)->decrypt($user['password']) == $password) {
                     self::logout();
@@ -353,9 +384,9 @@ class User extends Database
                         setcookie('user_token', $user['token'], time() + 3600, '/');
                     } else {
                         App::getInstance(true)->getLogger()->error('Failed to login user: Token is empty');
-
                         return 'false';
                     }
+
                     if (Mail::isEnabled()) {
                         try {
                             NewLogin::sendMail($user['uuid']);
@@ -372,8 +403,105 @@ class User extends Database
 
             return 'false';
         } catch (\Exception $e) {
-            App::getInstance(true)->getLogger()->error('Failed to login user: ' . $e->getMessage());
+            App::getInstance(true)->getLogger()->error('Failed to login user (Pterodactyl): ' . $e->getMessage());
 
+            return 'false';
+        }
+    }
+
+    /**
+     * Authenticate user against Calagopus API (Calagopus mode).
+     *
+     * @param string $login Username or email
+     * @param string $password Plain text password
+     * @param \MythicalDash\Config\ConfigInterface $config Config instance
+     *
+     * @return string User token if successful, 'false' otherwise
+     */
+    private static function loginCalagopus(string $login, string $password, $config): string
+    {
+        try {
+            $baseUrl = $config->getDBSetting(ConfigInterface::CALAGOPUS_BASE_URL, '');
+
+            if (empty($baseUrl)) {
+                App::getInstance(true)->getLogger()->error('Calagopus base URL is not configured');
+                return 'false';
+            }
+
+            // Authenticate against Calagopus API
+            $calagopusAuth = new CalagopusAuth($baseUrl);
+            $authResponse = $calagopusAuth->authenticate($login, $password);
+
+            // Extract user data from auth response
+            if (!isset($authResponse['user']) || !is_array($authResponse['user'])) {
+                App::getInstance(true)->getLogger()->error('Invalid Calagopus auth response: missing user data');
+                return 'false';
+            }
+
+            $calagopusUser = $authResponse['user'];
+            $calagopusUserId = $calagopusUser['id'] ?? null;
+            $userEmail = $calagopusUser['email'] ?? null;
+
+            if (!$calagopusUserId || !$userEmail) {
+                App::getInstance(true)->getLogger()->error('Calagopus auth response missing id or email');
+                return 'false';
+            }
+
+            // Check if user exists in local database
+            $con = self::getPdoConnection();
+            $stmt = $con->prepare('SELECT token, uuid FROM ' . self::TABLE_NAME . ' WHERE email = :email OR calagopus_user_id = :calagopus_user_id');
+            $stmt->bindParam(':email', $userEmail);
+            $stmt->bindParam(':calagopus_user_id', $calagopusUserId);
+            $stmt->execute();
+            $localUser = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+            if ($localUser) {
+                // User exists locally - update their Calagopus user ID if needed
+                self::updateInfo($localUser['token'], UserColumns::CALAGOPUS_USER_ID, (string) $calagopusUserId, false);
+
+                self::logout();
+                if (!empty($localUser['token'])) {
+                    setcookie('user_token', $localUser['token'], time() + 3600, '/');
+
+                    if (Mail::isEnabled()) {
+                        try {
+                            NewLogin::sendMail($localUser['uuid']);
+                        } catch (\Exception $e) {
+                            App::getInstance(true)->getLogger()->error('Failed to send email: ' . $e->getMessage());
+                        }
+                    }
+
+                    return $localUser['token'];
+                } else {
+                    App::getInstance(true)->getLogger()->error('Failed to login user: Token is empty');
+                    return 'false';
+                }
+            } else {
+                // User doesn't exist locally - auto-register them
+                App::getInstance(true)->getLogger()->info('Auto-registering user from Calagopus: ' . $userEmail);
+
+                $username = $calagopusUser['username'] ?? $userEmail;
+                $firstName = $calagopusUser['first_name'] ?? '';
+                $lastName = $calagopusUser['last_name'] ?? '';
+
+                // Generate a random password (user will not use this for Calagopus auth anyway)
+                $randomPassword = bin2hex(random_bytes(16));
+
+                try {
+                    self::register($username, $randomPassword, $userEmail, $firstName, $lastName, '', $calagopusUserId);
+
+                    // Now try to login again
+                    return self::loginCalagopus($login, $password, $config);
+                } catch (\Exception $e) {
+                    App::getInstance(true)->getLogger()->error('Failed to auto-register Calagopus user: ' . $e->getMessage());
+                    return 'false';
+                }
+            }
+        } catch (AuthenticationException $e) {
+            App::getInstance(true)->getLogger()->warning('Calagopus authentication failed for user ' . $login . ': ' . $e->getMessage());
+            return 'false';
+        } catch (\Exception $e) {
+            App::getInstance(true)->getLogger()->error('Failed to login user (Calagopus): ' . $e->getMessage());
             return 'false';
         }
     }

@@ -205,8 +205,15 @@ $router->add('/api/user/auth/login', function (): void {
      * Login user in the active panel.
      */
     try {
+        $panelUserId = 0;
+        if (PanelManager::isPterodactyl()) {
+            $panelUserId = $userInfoArray[UserColumns::PTERODACTYL_USER_ID];
+        } elseif (PanelManager::isCalagopus()) {
+            $panelUserId = $userInfoArray[UserColumns::CALAGOPUS_USER_ID];
+        }
+
         PanelUser::performLogin(
-            $userInfoArray[UserColumns::PTERODACTYL_USER_ID],
+            $panelUserId,
             $userInfoArray[UserColumns::EMAIL],
             $userInfoArray[UserColumns::USERNAME],
             $userInfoArray[UserColumns::FIRST_NAME] ?? '',
@@ -221,7 +228,14 @@ $router->add('/api/user/auth/login', function (): void {
      * Import servers from active panel to MythicalDash.
      */
     try {
-        $panelServers = \MythicalDash\Hooks\Panel\Admin\Servers::getUserServersList($userInfoArray[UserColumns::PTERODACTYL_USER_ID]);
+        $panelServerId = 0;
+        if (PanelManager::isPterodactyl()) {
+            $panelServerId = $userInfoArray[UserColumns::PTERODACTYL_USER_ID];
+        } elseif (PanelManager::isCalagopus()) {
+            $panelServerId = $userInfoArray[UserColumns::CALAGOPUS_USER_ID];
+        }
+
+        $panelServers = \MythicalDash\Hooks\Panel\Admin\Servers::getUserServersList($panelServerId);
 
         foreach ($panelServers as $panelServer) {
             if (!Server::doesServerExistByPterodactylId($panelServer['id'])) {
