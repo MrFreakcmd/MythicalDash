@@ -77,7 +77,6 @@ services:
       - ./backend/storage/packages:/var/www/html/storage/packages
       - mythicaldash_v3_attachments:/var/www/html/public/attachments
       - mythicaldash_v3_snapshots:/var/www/html/storage/backups
-      - mythicaldash_v3_vendor:/var/www/html/vendor
     networks:
       - mythicaldash_v3_network
 
@@ -111,8 +110,6 @@ volumes:
   mythicaldash_v3_attachments:
     driver: local
   mythicaldash_v3_snapshots:
-    driver: local
-  mythicaldash_v3_vendor:
     driver: local
 
 networks:
