@@ -37,20 +37,28 @@ use MythicalDash\Services\Calagopus\Exceptions\AuthenticationException;
 use MythicalDash\Services\Calagopus\Exceptions\PermissionException;
 use MythicalDash\Services\Calagopus\Exceptions\RateLimitException;
 use MythicalDash\Services\Calagopus\Exceptions\ResourceNotFoundException;
+use MythicalDash\Services\Calagopus\Traits\PaginationTrait;
 
 class LocationResource extends CalagopusAdmin
 {
+    use PaginationTrait;
+
     /**
      * List all locations.
+     *
+     * @param int $page The page number (1-based, default 1)
+     * @param int $perPage Items per page (default 50)
+     * @param ?string $search Optional search filter
      *
      * @throws AuthenticationException
      * @throws PermissionException
      * @throws RateLimitException
      */
-    public function listLocations(int $page = 1): array
+    public function listLocations(int $page = 1, int $perPage = 50, ?string $search = null): array
     {
         try {
-            return $this->request('GET', "/api/admin/locations?page={$page}");
+            $query = $this->buildPaginationQuery($page, $perPage, $search);
+            return $this->request('GET', "/api/admin/locations{$query}");
         } catch (ClientException $e) {
             $response = $e->getResponse();
             $statusCode = $response->getStatusCode();

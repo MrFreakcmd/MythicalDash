@@ -73,6 +73,7 @@ services:
       interval: 10s
     volumes:
       - ./backend/app:/var/www/html/app
+      - ./backend/storage:/var/www/html/storage
       - ./backend/storage/packages:/var/www/html/storage/packages
       - mythicaldash_v3_attachments:/var/www/html/public/attachments
       - mythicaldash_v3_snapshots:/var/www/html/storage/backups

@@ -34,8 +34,8 @@ use MythicalDash\Config\PublicConfig;
 
 $router->add('/api/system/settings', function (): void {
     App::init();
+    $appInstance = App::getInstance(false);
     try {
-        $appInstance = App::getInstance(false);
         $config = $appInstance->getConfig();
 
         $settingsPublic = PublicConfig::getPublicSettingsWithDefaults();
@@ -51,7 +51,7 @@ $router->add('/api/system/settings', function (): void {
 
         // Fill in any missing settings with defaults
         foreach ($settingsPublic as $key => $defaultValue) {
-            if (!isset($settings[$key]) || empty($settings[$key])) {
+            if (!isset($settings[$key])) {
                 $settings[$key] = $defaultValue;
             }
         }
@@ -59,7 +59,6 @@ $router->add('/api/system/settings', function (): void {
         App::OK('Sure here are the settings you were looking for', ['settings' => $settings, 'core' => []]);
     } catch (\Exception $e) {
         // Final fallback: return defaults if anything goes wrong
-        $appInstance = App::getInstance(false);
         $appInstance->getLogger()->error('Settings endpoint error: ' . $e->getMessage());
 
         $settingsPublic = PublicConfig::getPublicSettingsWithDefaults();

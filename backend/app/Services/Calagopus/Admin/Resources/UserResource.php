@@ -37,20 +37,28 @@ use MythicalDash\Services\Calagopus\Exceptions\AuthenticationException;
 use MythicalDash\Services\Calagopus\Exceptions\PermissionException;
 use MythicalDash\Services\Calagopus\Exceptions\RateLimitException;
 use MythicalDash\Services\Calagopus\Exceptions\ResourceNotFoundException;
+use MythicalDash\Services\Calagopus\Traits\PaginationTrait;
 
 class UserResource extends CalagopusAdmin
 {
+    use PaginationTrait;
+
     /**
      * List all users.
+     *
+     * @param int $page The page number (1-based, default 1)
+     * @param int $perPage Items per page (default 50)
+     * @param ?string $search Optional search filter
      *
      * @throws AuthenticationException
      * @throws PermissionException
      * @throws RateLimitException
      */
-    public function listUsers(int $page = 1): array
+    public function listUsers(int $page = 1, int $perPage = 50, ?string $search = null): array
     {
         try {
-            return $this->request('GET', "/api/admin/users?page={$page}");
+            $query = $this->buildPaginationQuery($page, $perPage, $search);
+            return $this->request('GET', "/api/admin/users{$query}");
         } catch (ClientException $e) {
             $response = $e->getResponse();
             $statusCode = $response->getStatusCode();
@@ -218,15 +226,21 @@ class UserResource extends CalagopusAdmin
     /**
      * Get user activity.
      *
+     * @param string $userId The user ID
+     * @param int $page The page number (1-based, default 1)
+     * @param int $perPage Items per page (default 50)
+     * @param ?string $search Optional search filter
+     *
      * @throws AuthenticationException
      * @throws PermissionException
      * @throws ResourceNotFoundException
      * @throws RateLimitException
      */
-    public function getUserActivity(string $userId, int $page = 1): array
+    public function getUserActivity(string $userId, int $page = 1, int $perPage = 50, ?string $search = null): array
     {
         try {
-            return $this->request('GET', "/api/admin/users/{$userId}/activity?page={$page}");
+            $query = $this->buildPaginationQuery($page, $perPage, $search);
+            return $this->request('GET', "/api/admin/users/{$userId}/activity{$query}");
         } catch (ClientException $e) {
             $response = $e->getResponse();
             $statusCode = $response->getStatusCode();

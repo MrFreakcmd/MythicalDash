@@ -35,6 +35,7 @@ use MythicalDash\App;
 use MythicalDash\Config\ConfigInterface;
 use MythicalDash\Services\Calagopus\Admin\Resources\UserResource;
 use MythicalDash\Services\Calagopus\Exceptions\ResourceNotFoundException;
+use MythicalDash\Services\Calagopus\Exceptions\ResourceNotFoundException;
 
 class User
 {
@@ -104,21 +105,25 @@ class User
                 $config->getDBSetting(ConfigInterface::CALAGOPUS_API_KEY, '')
             );
 
-            // Check if user exists by email first
+            // Check if user exists by email first (search via pagination)
             try {
-                $user = $userResource->getUser($email);
-                if (!empty($user) && isset($user['attributes']['id'])) {
-                    $appInstance->getLogger()->info('[Calagopus/Admin/User#performRegister] User already exists by email: ' . $email);
-                    return (int) $user['attributes']['id'];
+                $users = $userResource->listUsers(1, 250, $email);
+                if (!empty($users['data'])) {
+                    foreach ($users['data'] as $existingUser) {
+                        if (($existingUser['attributes']['email'] ?? null) === $email) {
+                            $appInstance->getLogger()->info('[Calagopus/Admin/User#performRegister] User already exists by email: ' . $email);
+                            return (int) $existingUser['attributes']['id'];
+                        }
+                    }
                 }
-            } catch (\Exception $e) {
+            } catch (ResourceNotFoundException $e) {
                 // User not found by email, continue
             }
 
             // Check if user exists by username
             try {
-                // Note: Calagopus API may not have findByUsername, so we list and search
-                $users = $userResource->listUsers();
+                // Calagopus API list with search parameter for username
+                $users = $userResource->listUsers(1, 250, $username);
                 if (!empty($users['data'])) {
                     foreach ($users['data'] as $existingUser) {
                         if (($existingUser['attributes']['username'] ?? null) === $username) {
@@ -127,7 +132,7 @@ class User
                         }
                     }
                 }
-            } catch (\Exception $e) {
+            } catch (ResourceNotFoundException $e) {
                 // Continue with creation if search fails
             }
 
@@ -145,7 +150,7 @@ class User
             }
 
             $userId = $newUser['attributes']['id'] ?? null;
-            if (!$userId) {
+            if ($userId === null) {
                 throw new \Exception('Failed to extract user ID from Calagopus response');
             }
 

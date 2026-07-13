@@ -53,22 +53,14 @@ class PanelManager
     {
         try {
             $app = App::getInstance(false);
-            $db = $app->getDatabase();
-            $pdo = $db->getPdo();
+            $config = $app->getConfig();
 
-            // Read active_panel_type directly from database without decryption
-            // (it's stored as plain text, not encrypted)
-            $stmt = $pdo->prepare("SELECT value FROM mythicaldash_settings WHERE name = 'active_panel_type' LIMIT 1");
-            $stmt->execute();
-            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            // Read active_panel_type from config (will decrypt if encrypted)
+            $panelType = $config->getDBSetting(ConfigInterface::ACTIVE_PANEL_TYPE, 'pterodactyl');
 
-            if ($result && !empty($result['value'])) {
-                $panelType = $result['value'];
-
-                // Validate it's one of the two valid values
-                if (\in_array($panelType, ['pterodactyl', 'calagopus'], true)) {
-                    return $panelType;
-                }
+            // Validate it's one of the two valid values
+            if (\in_array($panelType, ['pterodactyl', 'calagopus'], true)) {
+                return $panelType;
             }
         } catch (\Exception $e) {
             App::getInstance(false)->getLogger()->error('Failed to detect active panel type: ' . $e->getMessage());
