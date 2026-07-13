@@ -76,9 +76,15 @@ class CalagopusAuth
                     'username' => $login,
                     'password' => $password,
                 ],
+                'timeout' => 10,  // 10 second timeout to prevent hanging
             ]);
 
             $contents = $response->getBody()->getContents();
+
+            if (empty($contents)) {
+                throw new AuthenticationException('Empty response from Calagopus API');
+            }
+
             $decoded = json_decode($contents, true);
 
             if ($decoded === null && json_last_error() !== JSON_ERROR_NONE) {
@@ -87,23 +93,50 @@ class CalagopusAuth
 
             // Validate response structure
             if (!isset($decoded['data']) || !is_array($decoded['data'])) {
-                throw new AuthenticationException('Invalid authentication response from Calagopus');
+                throw new AuthenticationException('Invalid authentication response structure from Calagopus');
+            }
+
+            // Validate user data exists within data
+            if (!isset($decoded['data']['user']) || !is_array($decoded['data']['user'])) {
+                throw new AuthenticationException('Authentication response missing user data');
+            }
+
+            $user = $decoded['data']['user'];
+
+            // Validate critical user fields
+            if (empty($user['id']) || empty($user['email'])) {
+                throw new AuthenticationException('Authentication response missing required user fields (id or email)');
             }
 
             return $decoded['data'];
-        } catch (\GuzzleHttp\Exception\ClientException $e) {
-            $response = $e->getResponse();
-            $statusCode = $response->getStatusCode();
+        } catch (\GuzzleHttp\Exception\ConnectException $e) {
+            throw AuthenticationException::apiError('Failed to connect to Calagopus: ' . $e->getMessage());
+        } catch (\GuzzleHttp\Exception\RequestException $e) {
+            if ($e->hasResponse()) {
+                $response = $e->getResponse();
+                $statusCode = $response->getStatusCode();
 
-            if ($statusCode === 401 || $statusCode === 422) {
-                throw AuthenticationException::invalidCredentials();
+                if ($statusCode === 401 || $statusCode === 422) {
+                    throw AuthenticationException::invalidCredentials();
+                }
+
+                if ($statusCode === 429) {
+                    throw AuthenticationException::apiError('Calagopus API rate limited - please try again later');
+                }
+
+                if ($statusCode >= 500) {
+                    throw AuthenticationException::apiError('Calagopus API server error (HTTP ' . $statusCode . ')');
+                }
             }
 
             throw AuthenticationException::apiError('Authentication request failed: ' . $e->getMessage());
         } catch (GuzzleException $e) {
-            throw AuthenticationException::apiError('Failed to connect to Calagopus: ' . $e->getMessage());
+            throw AuthenticationException::apiError('Guzzle HTTP error: ' . $e->getMessage());
+        } catch (AuthenticationException $e) {
+            // Re-throw authentication exceptions as-is
+            throw $e;
         } catch (\Exception $e) {
-            throw AuthenticationException::apiError('Authentication error: ' . $e->getMessage());
+            throw AuthenticationException::apiError('Unexpected authentication error: ' . $e->getMessage());
         }
     }
 }

@@ -420,88 +420,158 @@ class User extends Database
      */
     private static function loginCalagopus(string $login, string $password, $config): string
     {
+        $appInstance = App::getInstance(true);
+
         try {
+            // Validate inputs
+            if (empty($login) || empty($password)) {
+                $appInstance->getLogger()->warning('Calagopus login attempt with empty credentials');
+                return 'false';
+            }
+
             $baseUrl = $config->getDBSetting(ConfigInterface::CALAGOPUS_BASE_URL, '');
 
             if (empty($baseUrl)) {
-                App::getInstance(true)->getLogger()->error('Calagopus base URL is not configured');
+                $appInstance->getLogger()->error('Calagopus base URL is not configured');
                 return 'false';
             }
 
             // Authenticate against Calagopus API
-            $calagopusAuth = new CalagopusAuth($baseUrl);
-            $authResponse = $calagopusAuth->authenticate($login, $password);
+            try {
+                $calagopusAuth = new CalagopusAuth($baseUrl);
+                $authResponse = $calagopusAuth->authenticate($login, $password);
+            } catch (AuthenticationException $e) {
+                $appInstance->getLogger()->warning('Calagopus API authentication failed for ' . $login . ': ' . $e->getMessage());
+                return 'false';
+            }
 
-            // Extract user data from auth response
+            // Extract and validate user data from auth response
             if (!isset($authResponse['user']) || !is_array($authResponse['user'])) {
-                App::getInstance(true)->getLogger()->error('Invalid Calagopus auth response: missing user data');
+                $appInstance->getLogger()->error('Calagopus auth response missing user data structure');
                 return 'false';
             }
 
             $calagopusUser = $authResponse['user'];
+
+            // Validate critical user fields with defensive null checks
             $calagopusUserId = $calagopusUser['id'] ?? null;
             $userEmail = $calagopusUser['email'] ?? null;
 
             if (!$calagopusUserId || !$userEmail) {
-                App::getInstance(true)->getLogger()->error('Calagopus auth response missing id or email');
+                $appInstance->getLogger()->error('Calagopus user missing id or email: ' . json_encode(['id' => $calagopusUserId, 'email' => $userEmail]));
+                return 'false';
+            }
+
+            // Cast ID to int and validate it's positive
+            $calagopusUserId = (int) $calagopusUserId;
+            if ($calagopusUserId <= 0) {
+                $appInstance->getLogger()->error('Calagopus user ID is invalid (non-positive): ' . $calagopusUserId);
+                return 'false';
+            }
+
+            // Sanitize email
+            $userEmail = filter_var($userEmail, FILTER_SANITIZE_EMAIL);
+            if (!filter_var($userEmail, FILTER_VALIDATE_EMAIL)) {
+                $appInstance->getLogger()->error('Calagopus user has invalid email format: ' . ($calagopusUser['email'] ?? 'null'));
                 return 'false';
             }
 
             // Check if user exists in local database
-            $con = self::getPdoConnection();
-            $stmt = $con->prepare('SELECT token, uuid FROM ' . self::TABLE_NAME . ' WHERE email = :email OR calagopus_user_id = :calagopus_user_id');
-            $stmt->bindParam(':email', $userEmail);
-            $stmt->bindParam(':calagopus_user_id', $calagopusUserId);
-            $stmt->execute();
-            $localUser = $stmt->fetch(\PDO::FETCH_ASSOC);
+            try {
+                $con = self::getPdoConnection();
+                $stmt = $con->prepare('SELECT token, uuid FROM ' . self::TABLE_NAME . ' WHERE email = :email OR calagopus_user_id = :calagopus_user_id LIMIT 1');
+
+                if (!$stmt) {
+                    throw new \Exception('Failed to prepare database statement');
+                }
+
+                $stmt->bindParam(':email', $userEmail);
+                $stmt->bindParam(':calagopus_user_id', $calagopusUserId, \PDO::PARAM_INT);
+                $stmt->execute();
+                $localUser = $stmt->fetch(\PDO::FETCH_ASSOC);
+            } catch (\Exception $e) {
+                $appInstance->getLogger()->error('Database query failed during Calagopus login: ' . $e->getMessage());
+                return 'false';
+            }
 
             if ($localUser) {
                 // User exists locally - update their Calagopus user ID if needed
-                self::updateInfo($localUser['token'], UserColumns::CALAGOPUS_USER_ID, (string) $calagopusUserId, false);
+                try {
+                    self::updateInfo($localUser['token'], UserColumns::CALAGOPUS_USER_ID, (string) $calagopusUserId, false);
+                } catch (\Exception $e) {
+                    $appInstance->getLogger()->warning('Failed to update Calagopus user ID: ' . $e->getMessage());
+                    // Don't fail login - continue with existing token
+                }
 
                 self::logout();
-                if (!empty($localUser['token'])) {
-                    setcookie('user_token', $localUser['token'], time() + 3600, '/');
 
-                    if (Mail::isEnabled()) {
-                        try {
-                            NewLogin::sendMail($localUser['uuid']);
-                        } catch (\Exception $e) {
-                            App::getInstance(true)->getLogger()->error('Failed to send email: ' . $e->getMessage());
-                        }
-                    }
-
-                    return $localUser['token'];
-                } else {
-                    App::getInstance(true)->getLogger()->error('Failed to login user: Token is empty');
+                if (empty($localUser['token'])) {
+                    $appInstance->getLogger()->error('Local user exists but has empty token for email: ' . $userEmail);
                     return 'false';
                 }
+
+                try {
+                    setcookie('user_token', $localUser['token'], time() + 3600, '/');
+                } catch (\Exception $e) {
+                    $appInstance->getLogger()->error('Failed to set cookie: ' . $e->getMessage());
+                    // Don't fail - token is still valid for API use
+                }
+
+                if (Mail::isEnabled()) {
+                    try {
+                        NewLogin::sendMail($localUser['uuid']);
+                    } catch (\Exception $e) {
+                        $appInstance->getLogger()->warning('Failed to send login email: ' . $e->getMessage());
+                        // Don't fail login for email issues
+                    }
+                }
+
+                $appInstance->getLogger()->info('Calagopus user logged in: ' . $userEmail);
+                return $localUser['token'];
             } else {
                 // User doesn't exist locally - auto-register them
-                App::getInstance(true)->getLogger()->info('Auto-registering user from Calagopus: ' . $userEmail);
+                $appInstance->getLogger()->info('Auto-registering new Calagopus user: ' . $userEmail);
 
-                $username = $calagopusUser['username'] ?? $userEmail;
+                // Extract optional fields with safe defaults
+                $username = $calagopusUser['username'] ?? null;
+                if (!$username) {
+                    // Fallback: use email local part as username
+                    $username = explode('@', $userEmail)[0] ?? 'calagopus_user';
+                }
+
+                // Sanitize username - alphanumeric, underscores, hyphens only
+                $username = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $username);
+                if (empty($username)) {
+                    $username = 'user_' . $calagopusUserId;
+                }
+
                 $firstName = $calagopusUser['first_name'] ?? '';
                 $lastName = $calagopusUser['last_name'] ?? '';
 
-                // Generate a random password (user will not use this for Calagopus auth anyway)
-                $randomPassword = bin2hex(random_bytes(16));
+                // Generate a cryptographically random password (user will not use this for Calagopus auth anyway)
+                try {
+                    $randomPassword = bin2hex(random_bytes(16));
+                } catch (\Exception $e) {
+                    $appInstance->getLogger()->error('Failed to generate random password: ' . $e->getMessage());
+                    return 'false';
+                }
 
                 try {
                     self::register($username, $randomPassword, $userEmail, $firstName, $lastName, '', $calagopusUserId);
+                    $appInstance->getLogger()->info('Successfully auto-registered Calagopus user: ' . $userEmail);
 
-                    // Now try to login again
+                    // Now try to login again - user should now exist locally
                     return self::loginCalagopus($login, $password, $config);
                 } catch (\Exception $e) {
-                    App::getInstance(true)->getLogger()->error('Failed to auto-register Calagopus user: ' . $e->getMessage());
+                    $appInstance->getLogger()->error('Failed to auto-register Calagopus user ' . $userEmail . ': ' . $e->getMessage());
                     return 'false';
                 }
             }
         } catch (AuthenticationException $e) {
-            App::getInstance(true)->getLogger()->warning('Calagopus authentication failed for user ' . $login . ': ' . $e->getMessage());
+            $appInstance->getLogger()->warning('Calagopus authentication error for user ' . $login . ': ' . $e->getMessage());
             return 'false';
         } catch (\Exception $e) {
-            App::getInstance(true)->getLogger()->error('Failed to login user (Calagopus): ' . $e->getMessage());
+            $appInstance->getLogger()->error('Unexpected error during Calagopus login: ' . $e->getMessage() . ' (Trace: ' . $e->getTraceAsString() . ')');
             return 'false';
         }
     }
