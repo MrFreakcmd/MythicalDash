@@ -105,6 +105,7 @@ $router->add('/api/user/auth/login', function (): void {
     try {
         $userInfoArray = User::getInfoArray($loginResult, [
             UserColumns::PTERODACTYL_USER_ID,
+            UserColumns::CALAGOPUS_USER_ID,
             UserColumns::VERIFIED,
             UserColumns::BANNED,
             UserColumns::DELETED,
@@ -132,8 +133,14 @@ $router->add('/api/user/auth/login', function (): void {
             UserColumns::USERNAME => 'username',
             UserColumns::EMAIL => 'email',
             UserColumns::UUID => 'UUID',
-            UserColumns::PTERODACTYL_USER_ID => 'Panel user ID',
         ];
+
+        // Add the appropriate panel user ID check based on active panel
+        if (PanelManager::isPterodactyl()) {
+            $criticalFields[UserColumns::PTERODACTYL_USER_ID] = 'Pterodactyl user ID';
+        } elseif (PanelManager::isCalagopus()) {
+            $criticalFields[UserColumns::CALAGOPUS_USER_ID] = 'Calagopus user ID';
+        }
 
         foreach ($criticalFields as $field => $fieldName) {
             if (!isset($userInfoArray[$field]) || $userInfoArray[$field] === null || $userInfoArray[$field] === '') {
@@ -148,9 +155,15 @@ $router->add('/api/user/auth/login', function (): void {
         $appInstance->InternalServerError('Internal Server Error', ['error_code' => 'DATABASE_ERROR']);
     }
 
-    if ($userInfoArray[UserColumns::PTERODACTYL_USER_ID] == 0) {
+    // Check if the user has a valid panel user ID based on active panel
+    if (PanelManager::isPterodactyl() && $userInfoArray[UserColumns::PTERODACTYL_USER_ID] == 0) {
         $eventManager->emit(AuthEvent::onAuthLoginFailed(), ['login' => $login, 'error_code' => 'PANEL_USER_NOT_FOUND']);
-        $appInstance->BadRequest('Panel user not found', ['error_code' => 'PANEL_USER_NOT_FOUND']);
+        $appInstance->BadRequest('Pterodactyl user not found', ['error_code' => 'PANEL_USER_NOT_FOUND']);
+    }
+
+    if (PanelManager::isCalagopus() && $userInfoArray[UserColumns::CALAGOPUS_USER_ID] == 0) {
+        $eventManager->emit(AuthEvent::onAuthLoginFailed(), ['login' => $login, 'error_code' => 'PANEL_USER_NOT_FOUND']);
+        $appInstance->BadRequest('Calagopus user not found', ['error_code' => 'PANEL_USER_NOT_FOUND']);
     }
 
     // Check account verification if mail is enabled

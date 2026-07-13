@@ -42,6 +42,7 @@ class UserColumns
     public const CREDITS = 'credits';
     public const UUID = 'uuid';
     public const PTERODACTYL_USER_ID = 'pterodactyl_user_id';
+    public const CALAGOPUS_USER_ID = 'calagopus_user_id';
     public const ACCOUNT_TOKEN = 'token';
     public const ROLE_ID = 'role';
     public const FIRST_IP = 'first_ip';
@@ -115,6 +116,7 @@ class UserColumns
             self::CREDITS,
             self::UUID,
             self::PTERODACTYL_USER_ID,
+            self::CALAGOPUS_USER_ID,
             self::ACCOUNT_TOKEN,
             self::ROLE_ID,
             self::FIRST_IP,
